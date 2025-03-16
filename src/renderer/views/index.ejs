@@ -1,0 +1,281 @@
+<%- include('partials/headers', {page_title: "Acceuil"}) %>
+
+<style>
+    .card-img {
+        height: 100px; /* Reduced height */
+        object-fit: contain; /* Ensure the entire icon is visible */
+    }
+    .card-text.description {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .fixed-size-card {
+        width: 400px; /* Define a fixed width for the cards */
+    }
+    .card-header {
+        width: 100%; /* Ensure the header takes the full width of the card */
+    }
+    .btn-full-width {
+        width: 100%; /* Make the button take the full width */
+        margin-top: auto; /* Push the button to the bottom */
+    }
+    .search-bar, .filter-bar {
+        margin-bottom: 20px;
+    }
+    .btn-install {
+        background-color: #28a745; /* Soft green */
+        border-color: #28a745;
+        color: white;
+    }
+    .btn-install:hover {
+        background-color: #218838; /* Darker green on hover */
+        border-color: #1e7e34;
+    }
+    .btn-uninstall {
+        background-color: #dc3545; /* Soft red */
+        border-color: #dc3545;
+        color: white;
+    }
+    .btn-uninstall:hover {
+        background-color: #c82333; /* Darker red on hover */
+        border-color: #bd2130;
+    }
+    .progress {
+        display: none;
+        height: 20px;
+    }
+</style>
+
+<div class="container">
+    <div class="row search-bar">
+        <div class="col-md-8">
+            <input type="text" class="form-control" id="searchInput" placeholder="Rechercher...">
+        </div>
+        <div class="col-md-4">
+            <select class="form-control" id="categoryFilter">
+                <option value="">Toutes les catégories</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-auto g-4" id="appContainer">
+        {% for app in apps %}
+        <div class="col app-card" data-name="{{ app.name }}" data-category="{{ app.category }}">
+            <div class="card mb-3 fixed-size-card">
+                <div class="card-header">
+                    <h5 class="card-title">{{ app.name }}</h5>
+                </div>
+                <div class="row g-0">
+                    <div class="col-md-4 d-flex justify-content-center align-items-center">
+                        <img src="{{ app.icon }}" class="img-fluid rounded-start card-img" alt="{{ app.name }}">
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body d-flex flex-column">
+                            <p class="card-text description">{{ app.description }}</p>
+                            <p class="card-text"><small class="text-muted">{{ app.editor }}</small></p>
+                            <p class="card-text"><small class="text-muted">{{ app.category }}</small></p>
+                            <a href="#" class="btn btn-primary btn-full-width {% if app.action == 'Installer' %}btn-install{% else %}btn-uninstall{% endif %}" data-app-id="{{ app.argument.split('--id ')[1] }}" data-app-source="{{ app.source }}" data-app-argument="{{ app.argument }}">{{ app.action }}</a>
+                            <div class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="alert-container" class="fixed-top mt-3 mx-3"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchInput = document.getElementById('searchInput');
+        var categoryFilter = document.getElementById('categoryFilter');
+        var appCards = document.querySelectorAll('.app-card');
+        var installButtons = document.querySelectorAll('.btn-install');
+        var uninstallButtons = document.querySelectorAll('.btn-uninstall');
+        var socket = io();
+
+        // Populate category filter options
+        var categories = new Set();
+        appCards.forEach(function(card) {
+            categories.add(card.getAttribute('data-category'));
+        });
+        categories.forEach(function(category) {
+            var option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categoryFilter.appendChild(option);
+        });
+
+        // Filter apps by search input
+        searchInput.addEventListener('input', function() {
+            var searchValue = this.value.toLowerCase();
+            filterApps(searchValue, categoryFilter.value);
+        });
+
+        // Filter apps by category
+        categoryFilter.addEventListener('change', function() {
+            filterApps(searchInput.value.toLowerCase(), this.value);
+        });
+
+        function filterApps(searchValue, categoryValue) {
+            appCards.forEach(function(card) {
+                var appName = card.getAttribute('data-name').toLowerCase();
+                var appCategory = card.getAttribute('data-category');
+                if (appName.includes(searchValue) && (categoryValue === '' || appCategory === categoryValue)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Handle install button click
+        installButtons.forEach(function(button) {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                var appId = this.getAttribute('data-app-id');
+                var appSource = this.getAttribute('data-app-source');
+                var appArgument = this.getAttribute('data-app-argument');
+                var progressBar = this.nextElementSibling.querySelector('.progress-bar');
+                var progressContainer = this.nextElementSibling;
+                this.style.display = 'none';
+                progressContainer.style.display = 'block';
+                fetch('/install', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ app_id: appId, app_source: appSource, app_argument: appArgument })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        showAlert('success', data.message);
+                    } else {
+                        showAlert('danger', 'Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'An error occurred while starting the installation.');
+                });
+            });
+        });
+
+        // Handle uninstall button click
+        uninstallButtons.forEach(function(button) {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                var appId = this.getAttribute('data-app-id');
+                var progressBar = this.nextElementSibling.querySelector('.progress-bar');
+                var progressContainer = this.nextElementSibling;
+                this.style.display = 'none';
+                progressContainer.style.display = 'block';
+                fetch('/uninstall', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ app_id: appId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'started') {
+                        showAlert('success', data.message);
+                    } else {
+                        showAlert('danger', 'Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'An error occurred while starting the uninstallation.');
+                });
+            });
+        });
+
+        // Socket.IO event listeners
+        socket.on('install_progress', function(msg) {
+            console.log('Install progress:', msg.data);
+            var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
+            if (button) {
+                var progressBar = button.nextElementSibling.querySelector('.progress-bar');
+                var progressContainer = button.nextElementSibling;
+                var progress = extractProgress(msg.data);
+                if (progress !== null) {
+                    progressBar.style.width = progress + '%';
+                }
+                if (msg.data.includes('Downloading')) {
+                    progressBar.textContent = 'Téléchargement...';
+                } else if (msg.data.includes('Successfully verified installer hash')) {
+                    progressBar.textContent = 'Téléchargement OK';
+                } else if (msg.data.includes('Starting package install')) {
+                    progressBar.textContent = 'Installation...';
+                }
+            }
+        });
+
+        socket.on('install_complete', function(msg) {
+            var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
+            if (button) {
+                var progressContainer = button.nextElementSibling;
+                progressContainer.style.display = 'none';
+                button.style.display = 'block';
+                showAlert(msg.status === 'success' ? 'success' : 'danger', msg.message);
+                if (msg.status === 'success') {
+                    button.textContent = 'Désinstaller';
+                    button.classList.remove('btn-install');
+                    button.classList.add('btn-uninstall');
+                }
+            }
+        });
+
+        socket.on('uninstall_complete', function(msg) {
+            var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
+            if (button) {
+                var progressContainer = button.nextElementSibling;
+                progressContainer.style.display = 'none';
+                button.style.display = 'block';
+                showAlert(msg.status === 'success' ? 'success' : 'danger', msg.message);
+                if (msg.status === 'success') {
+                    button.textContent = 'Installer';
+                    button.classList.remove('btn-uninstall');
+                    button.classList.add('btn-install');
+                }
+            }
+        });
+
+        function extractProgress(data) {
+            var match = data.match(/(\d+(\.\d+)?) MB \/ (\d+(\.\d+)?) MB/);
+            if (match) {
+                var downloaded = parseFloat(match[1]);
+                var total = parseFloat(match[3]);
+                return (downloaded / total) * 100;
+            }
+            return null;
+        }
+
+        function showAlert(type, message) {
+            var alertContainer = document.getElementById('alert-container');
+            var alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.setAttribute('role', 'alert');
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertContainer.appendChild(alert);
+            setTimeout(() => {
+                alert.classList.remove('show');
+                alert.classList.add('hide');
+                setTimeout(() => alert.remove(), 500);
+            }, 5000);
+        }
+    });
+</script>
+
+<%- include('partials/footers') %>

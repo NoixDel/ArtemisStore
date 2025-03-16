@@ -1,0 +1,109 @@
+<%- include('partials/headers', {page_title: "Windows et Office"}) %>
+
+<style>
+    body {
+        background-color: #f4f4f4;
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        max-width: 900px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .info-container {
+        background: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    .info-container p {
+        font-size: 1.1em;
+    }
+    .action-container {
+        background: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    .btn-container {
+        text-align: center;
+    }
+</style>
+
+<div class="container mt-5">
+    <h2 class="text-center">Windows & Office Information</h2>
+    <div class="logo-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Windows_11_logo.svg/799px-Windows_11_logo.svg.png" alt="Logo" class="img-fluid" style="max-width: 150px;">
+    </div>
+    
+    <div class="info-container" id="windows-info">
+        <!-- Informations Windows affichées ici -->
+    </div>
+    
+    <div class="action-container">
+        <div class="text-center mb-3">
+            <h4>Activer Windows</h4>
+            <button class="btn btn-primary" id="activate-windows">Activer Windows</button>
+        </div>
+        <div class="text-center">
+            <h4>Changer la version de Windows</h4>
+            <div class="d-flex justify-content-center">
+                <select class="form-select me-2 w-auto" id="change-version">
+                    <option selected>Choisir une version</option>
+                    <option value="home">Windows Home</option>
+                    <option value="pro">Windows Pro</option>
+                    <option value="enterprise">Windows Enterprise</option>
+                </select>
+                <button class="btn btn-success" id="apply-version">Appliquer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        fetch("/getwindows")
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert("Erreur: " + data.error);
+                } else {
+                    const infoContainer = document.getElementById("windows-info");
+                    infoContainer.innerHTML = `
+                        <p><strong>Nom du système :</strong> ${data.systemname}</p>
+                        <p><strong>Édition de Windows :</strong> ${data.winedition}</p>
+                        <p><strong>Architecture du système :</strong> ${data.systemarchitecture}</p>
+                        <p><strong>Activation de Windows :</strong> 
+                            <span style="color: ${data.winactivation === 'Activé' ? 'green' : 'red'};">
+                                ${data.winactivation} ${data.winactivation === 'Activé' ? '✅' : '❌'}
+                            </span>
+                        </p>
+                    `;
+                }
+            })
+            .catch(error => {
+                alert("Erreur: " + error);
+            });
+
+        document.getElementById("activate-windows").addEventListener("click", function() {
+            alert("Bouton d'activation de Windows cliqué");
+        });
+
+        document.getElementById("apply-version").addEventListener("click", function() {
+            const selectedVersion = document.getElementById("change-version").value;
+            if (selectedVersion !== "Choisir une version") {
+                alert("Changement de Windows vers " + selectedVersion);
+            }
+        });
+    });
+</script>
+
+<%- include('partials/footers') %>

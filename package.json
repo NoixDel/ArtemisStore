@@ -1,0 +1,42 @@
+{
+  "name": "artemisstore",
+  "version": "0.0.1",
+  "description": "AppStore for PC",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NoixDel/ArtemisStore.git"
+  },
+  "author": "Noix.Del",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NoixDel/ArtemisStore/issues"
+  },
+  "homepage": "https://github.com/NoixDel/ArtemisStore#readme",
+  "devDependencies": {
+    "electron": "^35.0.2",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10"
+  },
+  "build": {
+    "appId": "artemisstore",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build output directories
+dist/
+build/
+out/
+
+# Compiled files
+*.tsbuildinfo
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg
+
+# Electron specific
+*.asar
+*.crash
+debug.log*
+release/
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
