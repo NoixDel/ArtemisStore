@@ -60,22 +60,22 @@
     </div>
 
     <div class="row row-cols-1 row-cols-md-auto g-4" id="appContainer">
-        {% for app in apps %}
-        <div class="col app-card" data-name="{{ app.name }}" data-category="{{ app.category }}">
+        <% apps.forEach(app => { %>
+        <div class="col app-card" data-name="<%= app.name %>" data-category="<%= app.category %>">
             <div class="card mb-3 fixed-size-card">
                 <div class="card-header">
-                    <h5 class="card-title">{{ app.name }}</h5>
+                    <h5 class="card-title"><%= app.name %></h5>
                 </div>
                 <div class="row g-0">
                     <div class="col-md-4 d-flex justify-content-center align-items-center">
-                        <img src="{{ app.icon }}" class="img-fluid rounded-start card-img" alt="{{ app.name }}">
+                        <img src="<%= app.icon %>" class="img-fluid rounded-start card-img" alt="<%= app.name %>">
                     </div>
                     <div class="col-md-8">
                         <div class="card-body d-flex flex-column">
-                            <p class="card-text description">{{ app.description }}</p>
-                            <p class="card-text"><small class="text-muted">{{ app.editor }}</small></p>
-                            <p class="card-text"><small class="text-muted">{{ app.category }}</small></p>
-                            <a href="#" class="btn btn-primary btn-full-width {% if app.action == 'Installer' %}btn-install{% else %}btn-uninstall{% endif %}" data-app-id="{{ app.argument.split('--id ')[1] }}" data-app-source="{{ app.source }}" data-app-argument="{{ app.argument }}">{{ app.action }}</a>
+                            <p class="card-text description"><%= app.description %></p>
+                            <p class="card-text"><small class="text-muted"><%= app.editor %></small></p>
+                            <p class="card-text"><small class="text-muted"><%= app.category %></small></p>
+                            <a href="#" class="btn btn-primary btn-full-width <%= app.is_cracked ? 'btn-uninstall' : 'btn-install' %>" data-app-id="<%= app.id %>" data-app-source="<%= app.source %>" data-app-argument="<%= app.argument %>"><%= app.is_cracked ? 'Désinstaller' : 'Installer' %></a>
                             <div class="progress mt-2">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                             </div>
@@ -84,7 +84,7 @@
                 </div>
             </div>
         </div>
-        {% endfor %}
+        <% }) %>
     </div>
 </div>
 

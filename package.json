@@ -1,6 +1,6 @@
 {
   "name": "artemisstore",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "AppStore for PC",
   "main": "src/main.js",
   "scripts": {
@@ -25,7 +25,8 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "sqlite3": "^5.1.7"
   },
   "build": {
     "appId": "artemisstore",
@@ -33,7 +34,8 @@
     "asar": true,
     "files": [
       "src/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "applications.db"
     ],
     "publish": {
       "provider": "github",
@@ -45,7 +47,11 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "src/renderer/static/img/favicon.ico"
+      "icon": "src/renderer/static/img/favicon.ico",
+      "publisherName": "Noix.Del",
+      "requestedExecutionLevel": "requireAdministrator",
+      "certificateFile": "certificate/certificate.pfx",
+      "certificatePassword": "${CERT_PASSWORD}"
     }
   }
 }

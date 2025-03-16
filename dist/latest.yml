@@ -1,8 +1,8 @@
-version: 0.0.1
+version: 0.0.4
 files:
-  - url: artemisstore-Setup-0.0.1.exe
-    sha512: pQ3bajg4aU0hnf3D5/3aMXxcB6gXN5gq7JXPN4SJR7S9K1g0Jg9GJG1DEXk8R+iB5Fq6+NcB8I4CqEXIDjFZUQ==
-    size: 85634591
-path: artemisstore-Setup-0.0.1.exe
-sha512: pQ3bajg4aU0hnf3D5/3aMXxcB6gXN5gq7JXPN4SJR7S9K1g0Jg9GJG1DEXk8R+iB5Fq6+NcB8I4CqEXIDjFZUQ==
-releaseDate: '2025-03-16T20:15:46.529Z'
+  - url: ArtemisStore-Setup-0.0.4.exe
+    sha512: pKVaMqoTMAlogygzCK49C6KgdWdrqUL0Jn+7t4NEOpPw/3TjNzNwsQruJcg8MjxUoFct7LuPe+OFp9ddDGR8jA==
+    size: 90518997
+path: ArtemisStore-Setup-0.0.4.exe
+sha512: pKVaMqoTMAlogygzCK49C6KgdWdrqUL0Jn+7t4NEOpPw/3TjNzNwsQruJcg8MjxUoFct7LuPe+OFp9ddDGR8jA==
+releaseDate: '2025-03-16T21:20:33.657Z'

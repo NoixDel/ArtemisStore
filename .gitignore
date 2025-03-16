@@ -46,3 +46,12 @@ release/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Certificates
+*.pem
+*.key
+*.pub
+*.crt
+*.csr
+*.pfx
+certificate/

@@ -3,6 +3,7 @@ const { autoUpdater } = require("electron-updater");
 const path = require('path');
 const ejs = require('ejs');
 const fs = require('fs');
+const sqlite3 = require('sqlite3').verbose();
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -18,8 +19,8 @@ const createWindow = () => {
   });
 
   win.setMenu(null);
-  
-  const loadPage = (page) => {
+
+  const loadPage = (page, data = {}) => {
     const viewsPath = path.join(__dirname, 'renderer/views');
     const templatePath = path.join(viewsPath, `${page}.ejs`);
     const outputPath = path.join(app.getPath('temp'), `${page}.html`);
@@ -29,7 +30,7 @@ const createWindow = () => {
         console.error('Error reading the template file:', err);
         return;
       }
-      const html = ejs.render(template, {}, { views: [viewsPath] });
+      const html = ejs.render(template, data, { views: [viewsPath] });
       fs.writeFile(outputPath, html, (err) => {
         if (err) {
           console.error('Error writing the HTML file:', err);
@@ -40,16 +41,39 @@ const createWindow = () => {
     });
   };
 
-  loadPage('index');
+  const loadApplications = (callback) => {
+    const dbPath = path.join(__dirname, '..', 'applications.db');
+    const db = new sqlite3.Database(dbPath);
+
+    db.all("SELECT * FROM applications", (err, rows) => {
+      if (err) {
+        console.error('Error reading the database:', err);
+        callback([]);
+        return;
+      }
+      callback(rows);
+    });
+
+    db.close();
+  };
+
+  loadApplications((apps) => {
+    loadPage('index', { apps });
+  });
 
   ipcMain.on('navigate-to-page', (event, page) => {
-    loadPage(page);
+    loadApplications((apps) => {
+      loadPage(page, { apps });
+    });
   });
 };
 
 app.whenReady().then(() => {
   // Vérifier les mises à jour au lancement
   autoUpdater.checkForUpdatesAndNotify();
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+  }, 60000);
 
   createWindow();
 
@@ -83,4 +107,32 @@ autoUpdater.on("update-downloaded", () => {
   }).then(() => {
     autoUpdater.quitAndInstall();
   });
+});
+
+autoUpdater.on('checking-for-update', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Vérification des mises à jour',
+    message: 'Vérification des mises à jour en cours...',
+  });
+});
+
+autoUpdater.on('update-available', (info) => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Mise à jour disponible',
+    message: `Mise à jour disponible : ${info.version}`,
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Aucune mise à jour disponible',
+    message: 'Aucune mise à jour disponible.',
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  dialog.showErrorBox('Erreur de mise à jour', `Erreur : ${err.message}`);
 });
