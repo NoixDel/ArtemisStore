@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "node -r dotenv/config node_modules/.bin/electron-builder"
   },
   "repository": {
     "type": "git",
@@ -23,7 +23,9 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
-    "ejs": "^3.1.10"
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "electron-updater": "^6.3.9"
   },
   "build": {
     "appId": "artemisstore",
@@ -32,6 +34,11 @@
       "src/**/*",
       "node_modules/**/*"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "NoixDel",
+      "repo": "ArtemisStore"
+    },
     "directories": {
       "buildResources": "build"
     },

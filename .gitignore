@@ -15,10 +15,15 @@ pids
 node_modules/
 jspm_packages/
 
-# Build output directories
-dist/
-build/
-out/
+# Build output directories (EXCEPT for releases)
+dist/*
+!dist/latest.yml
+!dist/*.exe
+!dist/*.dmg
+!dist/*.zip
+!dist/*.AppImage
+!dist/*.deb
+!dist/*.rpm
 
 # Compiled files
 *.tsbuildinfo

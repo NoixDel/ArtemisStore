@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { autoUpdater } = require("electron-updater");
 const path = require('path');
 const ejs = require('ejs');
 const fs = require('fs');
@@ -47,6 +48,9 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  // Vérifier les mises à jour au lancement
+  autoUpdater.checkForUpdatesAndNotify();
+
   createWindow();
 
   app.on('activate', () => {
@@ -60,4 +64,23 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Événements de mise à jour
+autoUpdater.on("update-available", () => {
+  dialog.showMessageBox({
+    type: "info",
+    title: "Mise à jour disponible",
+    message: "Une nouvelle version est disponible. Téléchargement en cours...",
+  });
+});
+
+autoUpdater.on("update-downloaded", () => {
+  dialog.showMessageBox({
+    type: "info",
+    title: "Mise à jour prête",
+    message: "La mise à jour a été téléchargée. L'application va redémarrer.",
+  }).then(() => {
+    autoUpdater.quitAndInstall();
+  });
 });
