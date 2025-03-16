@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder --publish always"
   },
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
   },
   "build": {
     "appId": "artemisstore",
+    "productName": "ArtemisStore",
     "asar": true,
     "files": [
       "src/**/*",
@@ -43,7 +44,8 @@
       "buildResources": "build"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "src/renderer/static/img/favicon.ico"
     }
   }
 }
