@@ -5,11 +5,13 @@ const ejs = require('ejs');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
+autoUpdater.allowPrerelease = true;
+
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(__dirname, 'renderer', 'static', 'img','logo.png'),
+    icon: path.join(app.getAppPath(), 'src', 'renderer', 'static', 'img','logo.png'),
     frame: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -21,7 +23,7 @@ const createWindow = () => {
   win.setMenu(null);
 
   const loadPage = (page, data = {}) => {
-    const viewsPath = path.join(__dirname, 'renderer/views');
+    const viewsPath = path.join(app.getAppPath(), 'src/renderer/views');
     const templatePath = path.join(viewsPath, `${page}.ejs`);
     const outputPath = path.join(app.getPath('temp'), `${page}.html`);
 
@@ -42,7 +44,7 @@ const createWindow = () => {
   };
 
   const loadApplications = (callback) => {
-    const dbPath = path.join(__dirname, '..', 'applications.db');
+    const dbPath = path.join(app.getAppPath(), 'applications.db');
     const db = new sqlite3.Database(dbPath);
 
     db.all("SELECT * FROM applications", (err, rows) => {
@@ -91,29 +93,17 @@ app.on('window-all-closed', () => {
 });
 
 // Événements de mise à jour
-autoUpdater.on("update-available", () => {
-  dialog.showMessageBox({
-    type: "info",
-    title: "Mise à jour disponible",
-    message: "Une nouvelle version est disponible. Téléchargement en cours...",
-  });
-});
-
 autoUpdater.on("update-downloaded", () => {
   dialog.showMessageBox({
     type: "info",
     title: "Mise à jour prête",
     message: "La mise à jour a été téléchargée. L'application va redémarrer.",
   }).then(() => {
+    // Fermer toutes les fenêtres avant de redémarrer
+    BrowserWindow.getAllWindows().forEach(window => {
+      window.close();
+    });
     autoUpdater.quitAndInstall();
-  });
-});
-
-autoUpdater.on('checking-for-update', () => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Vérification des mises à jour',
-    message: 'Vérification des mises à jour en cours...',
   });
 });
 
@@ -122,14 +112,6 @@ autoUpdater.on('update-available', (info) => {
     type: 'info',
     title: 'Mise à jour disponible',
     message: `Mise à jour disponible : ${info.version}`,
-  });
-});
-
-autoUpdater.on('update-not-available', () => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Aucune mise à jour disponible',
-    message: 'Aucune mise à jour disponible.',
   });
 });
 

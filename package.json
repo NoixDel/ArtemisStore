@@ -1,12 +1,13 @@
 {
   "name": "artemisstore",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "AppStore for PC",
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder --publish always"
+    "build": "electron-builder --publish never",
+    "sign-and-publish": "electron-builder --publish always"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,8 @@
   },
   "homepage": "https://github.com/NoixDel/ArtemisStore#readme",
   "devDependencies": {
+    "cross-env": "^7.0.3",
+    "dotenv-cli": "^8.0.0",
     "electron": "^35.0.2",
     "electron-builder": "^25.1.8"
   },
@@ -48,10 +51,20 @@
     "win": {
       "target": "nsis",
       "icon": "src/renderer/static/img/favicon.ico",
-      "publisherName": "Noix.Del",
       "requestedExecutionLevel": "requireAdministrator",
-      "certificateFile": "certificate/certificate.pfx",
-      "certificatePassword": "${CERT_PASSWORD}"
+      "verifyUpdateCodeSignature": false,
+      "signtoolOptions": {
+        "publisherName": "Noix.Del",
+        "certificateFile": "certificate/MonCertificat.pfx"
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }

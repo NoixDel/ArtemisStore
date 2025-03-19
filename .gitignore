@@ -16,14 +16,7 @@ node_modules/
 jspm_packages/
 
 # Build output directories (EXCEPT for releases)
-dist/*
-!dist/latest.yml
-!dist/*.exe
-!dist/*.dmg
-!dist/*.zip
-!dist/*.AppImage
-!dist/*.deb
-!dist/*.rpm
+dist/
 
 # Compiled files
 *.tsbuildinfo
