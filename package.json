@@ -1,12 +1,12 @@
 {
   "name": "artemisstore",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "AppStore for PC",
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
-    "build": "electron-builder --publish never",
+    "build": "electron-builder --publish never --dir --windows",
     "sign-and-publish": "electron-builder --publish always"
   },
   "repository": {
@@ -29,7 +29,8 @@
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "electron-updater": "^6.3.9",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "winston": "^3.17.0"
   },
   "build": {
     "appId": "artemisstore",
@@ -39,6 +40,12 @@
       "src/**/*",
       "node_modules/**/*",
       "applications.db"
+    ],
+    "extraResources": [
+      {
+        "from": "applications.db",
+        "to": "applications.db"
+      }
     ],
     "publish": {
       "provider": "github",

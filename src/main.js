@@ -1,20 +1,19 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { autoUpdater } = require("electron-updater");
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const ejs = require('ejs');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
-
-autoUpdater.allowPrerelease = true;
+const { checkForUpdates } = require('./bin/updater');
+const logger = require('./bin/logger');
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(app.getAppPath(), 'src', 'renderer', 'static', 'img','logo.png'),
+    icon: path.join(app.getAppPath(), 'src', 'renderer', 'static', 'img', 'logo.png'),
     frame: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(app.getAppPath(), 'src', 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -23,19 +22,19 @@ const createWindow = () => {
   win.setMenu(null);
 
   const loadPage = (page, data = {}) => {
-    const viewsPath = path.join(app.getAppPath(), 'src/renderer/views');
+    const viewsPath = path.join(app.getAppPath(), 'src', 'renderer', 'views');
     const templatePath = path.join(viewsPath, `${page}.ejs`);
     const outputPath = path.join(app.getPath('temp'), `${page}.html`);
-
+    logger.info(`Loading page: ${viewsPath}/${page}.ejs`);
     fs.readFile(templatePath, 'utf-8', (err, template) => {
       if (err) {
-        console.error('Error reading the template file:', err);
+        logger.error(`Error reading the template file: ${err}`);
         return;
       }
       const html = ejs.render(template, data, { views: [viewsPath] });
       fs.writeFile(outputPath, html, (err) => {
         if (err) {
-          console.error('Error writing the HTML file:', err);
+          logger.error(`Error writing the HTML file: ${err}`);
           return;
         }
         win.loadFile(outputPath);
@@ -44,19 +43,49 @@ const createWindow = () => {
   };
 
   const loadApplications = (callback) => {
-    const dbPath = path.join(app.getAppPath(), 'applications.db');
-    const db = new sqlite3.Database(dbPath);
+    const userDbPath = path.join(app.getPath('userData'), 'applications.db');
+    const defaultDbPath = path.join(process.resourcesPath, 'applications.db');
+    logger.info(`Reading the database: ${userDbPath}`);
 
-    db.all("SELECT * FROM applications", (err, rows) => {
-      if (err) {
-        console.error('Error reading the database:', err);
-        callback([]);
-        return;
+    // Copier la base de données si elle n'existe pas encore dans userData
+    if (!fs.existsSync(userDbPath)) {
+      if (fs.existsSync(defaultDbPath) && fs.statSync(defaultDbPath).size > 0) {
+        fs.copyFileSync(defaultDbPath, userDbPath);
+        logger.info(`Database copied to ${userDbPath}`);
+      } else {
+        logger.error(`ERROR: Default database is missing or empty at ${defaultDbPath}`);
       }
-      callback(rows);
-    });
+    }
+    if (fs.existsSync(userDbPath) && fs.statSync(userDbPath).size === 0) {
+      logger.warn(`WARNING: Database is empty! Replacing with default database.`);
+      fs.unlinkSync(userDbPath);  // Supprimer la base vide
+      fs.copyFileSync(defaultDbPath, userDbPath); // Recopier la base originale
+  }
+  
+    try {
+      const db = new sqlite3.Database(userDbPath, sqlite3.OPEN_READWRITE, (err) => {
+        if (err) {
+          logger.error(`Erreur ouverture DB: ${err.message}`);
+        }
+      });
+      db.all("SELECT * FROM applications", (err, rows) => {
+        if (err) {
+          logger.error(`Error reading the database: ${err}. ${userDbPath}`);
+          callback([]);
+          return;
+        }
+        callback(rows);
+      });
 
-    db.close();
+      db.close((err) => {
+        if (err) {
+          logger.error(`Error closing the database: ${err}`);
+        }
+      });
+    } catch (err) {
+      logger.error(`Unexpected error: ${err}`);
+      callback([]);
+    }
   };
 
   loadApplications((apps) => {
@@ -71,12 +100,8 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  // Vérifier les mises à jour au lancement
-  autoUpdater.checkForUpdatesAndNotify();
-  setInterval(() => {
-    autoUpdater.checkForUpdatesAndNotify();
-  }, 60000);
-
+  logger.info('Application is ready, checking for updates');
+  checkForUpdates();
   createWindow();
 
   app.on('activate', () => {
@@ -88,33 +113,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    logger.info('All windows closed, quitting the application');
     app.quit();
   }
-});
-
-// Événements de mise à jour
-autoUpdater.on("update-downloaded", () => {
-  dialog.showMessageBox({
-    type: "info",
-    title: "Mise à jour prête",
-    message: "La mise à jour a été téléchargée. L'application va redémarrer.",
-  }).then(() => {
-    // Fermer toutes les fenêtres avant de redémarrer
-    BrowserWindow.getAllWindows().forEach(window => {
-      window.close();
-    });
-    autoUpdater.quitAndInstall();
-  });
-});
-
-autoUpdater.on('update-available', (info) => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Mise à jour disponible',
-    message: `Mise à jour disponible : ${info.version}`,
-  });
-});
-
-autoUpdater.on('error', (err) => {
-  dialog.showErrorBox('Erreur de mise à jour', `Erreur : ${err.message}`);
 });
