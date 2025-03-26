@@ -11,7 +11,7 @@
         white-space: nowrap;
     }
     .fixed-size-card {
-        width: 400px; /* Define a fixed width for the cards */
+        width: 350px; /* Define a fixed width for the cards */
     }
     .card-header {
         width: 100%; /* Ensure the header takes the full width of the card */
@@ -59,10 +59,10 @@
         </div>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-auto g-4" id="appContainer">
+    <div class="row row-cols-1 row-cols-md-auto g-4 justify-content-center" id="appContainer">
         <% apps.forEach(app => { %>
         <div class="col app-card" data-name="<%= app.name %>" data-category="<%= app.category %>">
-            <div class="card mb-3 fixed-size-card">
+            <div class="card mb-3 fixed-size-card" data-bs-toggle="tooltip" title="<%= app.description %>">
                 <div class="card-header">
                     <h5 class="card-title"><%= app.name %></h5>
                 </div>
@@ -75,7 +75,7 @@
                             <p class="card-text description"><%= app.description %></p>
                             <p class="card-text"><small class="text-muted"><%= app.editor %></small></p>
                             <p class="card-text"><small class="text-muted"><%= app.category %></small></p>
-                            <a href="#" class="btn btn-primary btn-full-width <%= app.is_cracked ? 'btn-uninstall' : 'btn-install' %>" data-app-id="<%= app.id %>" data-app-source="<%= app.source %>" data-app-argument="<%= app.argument %>"><%= app.is_cracked ? 'Désinstaller' : 'Installer' %></a>
+                            <a href="#" class="btn btn-primary btn-full-width <%= app.is_installed ? 'btn-uninstall' : 'btn-install' %>" data-app-id="<%= app.id %>" data-app-source="<%= app.source %>" data-app-argument="<%= app.argument %>"><%= app.is_installed ? 'Désinstaller' : 'Installer' %></a>
                             <div class="progress mt-2">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                             </div>
@@ -95,9 +95,6 @@
         var searchInput = document.getElementById('searchInput');
         var categoryFilter = document.getElementById('categoryFilter');
         var appCards = document.querySelectorAll('.app-card');
-        var installButtons = document.querySelectorAll('.btn-install');
-        var uninstallButtons = document.querySelectorAll('.btn-uninstall');
-        var socket = io();
 
         // Populate category filter options
         var categories = new Set();
@@ -134,92 +131,31 @@
             });
         }
 
-        // Handle install button click
-        installButtons.forEach(function(button) {
-            button.addEventListener('click', function(event) {
-                event.preventDefault();
-                var appId = this.getAttribute('data-app-id');
-                var appSource = this.getAttribute('data-app-source');
-                var appArgument = this.getAttribute('data-app-argument');
-                var progressBar = this.nextElementSibling.querySelector('.progress-bar');
-                var progressContainer = this.nextElementSibling;
-                this.style.display = 'none';
-                progressContainer.style.display = 'block';
-                fetch('/install', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ app_id: appId, app_source: appSource, app_argument: appArgument })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'started') {
-                        showAlert('success', data.message);
-                    } else {
-                        showAlert('danger', 'Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showAlert('danger', 'An error occurred while starting the installation.');
-                });
-            });
-        });
-
-        // Handle uninstall button click
-        uninstallButtons.forEach(function(button) {
-            button.addEventListener('click', function(event) {
-                event.preventDefault();
-                var appId = this.getAttribute('data-app-id');
-                var progressBar = this.nextElementSibling.querySelector('.progress-bar');
-                var progressContainer = this.nextElementSibling;
-                this.style.display = 'none';
-                progressContainer.style.display = 'block';
-                fetch('/uninstall', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ app_id: appId })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'started') {
-                        showAlert('success', data.message);
-                    } else {
-                        showAlert('danger', 'Error: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showAlert('danger', 'An error occurred while starting the uninstallation.');
-                });
-            });
-        });
-
-        // Socket.IO event listeners
-        socket.on('install_progress', function(msg) {
+        // IPC event listeners
+        window.electron.ipcRenderer.on('install-progress', function(event, msg) {
             console.log('Install progress:', msg.data);
             var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
             if (button) {
                 var progressBar = button.nextElementSibling.querySelector('.progress-bar');
                 var progressContainer = button.nextElementSibling;
+                progressContainer.style.display = 'block'; // Afficher la barre de progression
+                button.style.display = 'none'; // Cacher le bouton "Installer"
                 var progress = extractProgress(msg.data);
                 if (progress !== null) {
                     progressBar.style.width = progress + '%';
+                    progressBar.textContent = progress.toFixed(2) + '%';
                 }
                 if (msg.data.includes('Downloading')) {
-                    progressBar.textContent = 'Téléchargement...';
+                    progressBar.textContent = 'Téléchargement... ' + progressBar.textContent;
                 } else if (msg.data.includes('Successfully verified installer hash')) {
                     progressBar.textContent = 'Téléchargement OK';
                 } else if (msg.data.includes('Starting package install')) {
-                    progressBar.textContent = 'Installation...';
+                    progressBar.textContent = 'Installation... ' + progressBar.textContent;
                 }
             }
         });
 
-        socket.on('install_complete', function(msg) {
+        window.electron.ipcRenderer.on('install-complete', function(event, msg) {
             var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
             if (button) {
                 var progressContainer = button.nextElementSibling;
@@ -234,7 +170,7 @@
             }
         });
 
-        socket.on('uninstall_complete', function(msg) {
+        window.electron.ipcRenderer.on('uninstall-complete', function(event, msg) {
             var button = document.querySelector(`a[data-app-id="${msg.app_id}"]`);
             if (button) {
                 var progressContainer = button.nextElementSibling;

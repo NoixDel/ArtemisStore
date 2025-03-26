@@ -44,8 +44,20 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Windows_11_logo.svg/799px-Windows_11_logo.svg.png" alt="Logo" class="img-fluid" style="max-width: 150px;">
     </div>
     
-    <div class="info-container" id="windows-info">
-        <!-- Informations Windows affichées ici -->
+    <div class="info-container" id="win-office-info">
+        <% if (winOfficeInfo) { %>
+            <p><strong>Nom du système :</strong> <%= winOfficeInfo.osName %></p>
+            <p><strong>Édition de Windows :</strong> <%= winOfficeInfo.windowsEditionId %></p>
+            <p><strong>Version de Windows :</strong> <%= winOfficeInfo.osDisplayVersion %></p>
+            <p><strong>Architecture du système :</strong> <%= winOfficeInfo.osVersion %></p>
+            <p><strong>Activation de Windows :</strong> 
+                <span style="color: <%= winOfficeInfo.osActivationStatus ? "green" : "red" %>;">
+                    <%= winOfficeInfo.osActivationType %> <%= winOfficeInfo.osActivationStatus ? "✅" : "❌" %>
+                </span>
+            </p>
+        <% } else { %>
+            <p>récupération des informations</p>
+        <% } %>
     </div>
     
     <div class="action-container">
@@ -67,32 +79,31 @@
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        fetch("/getwindows")
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Erreur: " + data.error);
-                } else {
-                    const infoContainer = document.getElementById("windows-info");
-                    infoContainer.innerHTML = `
-                        <p><strong>Nom du système :</strong> ${data.systemname}</p>
-                        <p><strong>Édition de Windows :</strong> ${data.winedition}</p>
-                        <p><strong>Architecture du système :</strong> ${data.systemarchitecture}</p>
+<% if (!winOfficeInfo) { %>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            window.electron.on('win-office-info', (data) => {
+                if (data) {
+                    document.getElementById('win-office-info').innerHTML = `
+                        <p><strong>Nom du système :</strong> ${data.osName}</p>
+                        <p><strong>Édition de Windows :</strong> ${data.windowsEditionId}</p>
+                        <p><strong>Version de Windows :</strong> ${data.osDisplayVersion}</p>
+                        <p><strong>Architecture du système :</strong> ${data.osVersion}</p>
                         <p><strong>Activation de Windows :</strong> 
-                            <span style="color: ${data.winactivation === 'Activé' ? 'green' : 'red'};">
-                                ${data.winactivation} ${data.winactivation === 'Activé' ? '✅' : '❌'}
+                            <span style="color: ${data.osActivationStatus ? "green" : "red"};">
+                                ${data.osActivationType} ${data.osActivationStatus ? "✅" : "❌"}
                             </span>
                         </p>
                     `;
+                } else {
+                    document.getElementById('win-office-info').innerHTML = `<p>Erreur lors de la récupération des informations.</p>`;
                 }
-            })
-            .catch(error => {
-                alert("Erreur: " + error);
             });
-
+        });
+    </script>
+<% } %>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("activate-windows").addEventListener("click", function() {
             alert("Bouton d'activation de Windows cliqué");
         });

@@ -1,10 +1,13 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const ejs = require('ejs');
-const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
 const { checkForUpdates } = require('./bin/updater');
 const logger = require('./bin/logger');
+const loadPage = require('./bin/loadpage');
+
+// IMPORTING FUNCTIONS
+const loadApplications = require('./function/LoadApplications');
+const { setupInstallUninstallListeners } = require('./function/InstallUninstall');
+const getWinOfficeInfo = require('./function/GetWinOfficeInfo');
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -15,94 +18,55 @@ const createWindow = () => {
     webPreferences: {
       preload: path.join(app.getAppPath(), 'src', 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      enableRemoteModule: false
     }
   });
 
   win.setMenu(null);
 
-  const loadPage = (page, data = {}) => {
-    const viewsPath = path.join(app.getAppPath(), 'src', 'renderer', 'views');
-    const templatePath = path.join(viewsPath, `${page}.ejs`);
-    const outputPath = path.join(app.getPath('temp'), `${page}.html`);
-    logger.info(`Loading page: ${viewsPath}/${page}.ejs`);
-    fs.readFile(templatePath, 'utf-8', (err, template) => {
-      if (err) {
-        logger.error(`Error reading the template file: ${err}`);
-        return;
-      }
-      const html = ejs.render(template, data, { views: [viewsPath] });
-      fs.writeFile(outputPath, html, (err) => {
-        if (err) {
-          logger.error(`Error writing the HTML file: ${err}`);
-          return;
-        }
-        win.loadFile(outputPath);
-      });
-    });
-  };
-
-  const loadApplications = (callback) => {
-    const userDbPath = path.join(app.getPath('userData'), 'applications.db');
-    const defaultDbPath = path.join(process.resourcesPath, 'applications.db');
-    logger.info(`Reading the database: ${userDbPath}`);
-
-    // Copier la base de données si elle n'existe pas encore dans userData
-    if (!fs.existsSync(userDbPath)) {
-      if (fs.existsSync(defaultDbPath) && fs.statSync(defaultDbPath).size > 0) {
-        fs.copyFileSync(defaultDbPath, userDbPath);
-        logger.info(`Database copied to ${userDbPath}`);
-      } else {
-        logger.error(`ERROR: Default database is missing or empty at ${defaultDbPath}`);
-      }
-    }
-    if (fs.existsSync(userDbPath) && fs.statSync(userDbPath).size === 0) {
-      logger.warn(`WARNING: Database is empty! Replacing with default database.`);
-      fs.unlinkSync(userDbPath);  // Supprimer la base vide
-      fs.copyFileSync(defaultDbPath, userDbPath); // Recopier la base originale
-  }
-  
-    try {
-      const db = new sqlite3.Database(userDbPath, sqlite3.OPEN_READWRITE, (err) => {
-        if (err) {
-          logger.error(`Erreur ouverture DB: ${err.message}`);
-        }
-      });
-      db.all("SELECT * FROM applications", (err, rows) => {
-        if (err) {
-          logger.error(`Error reading the database: ${err}. ${userDbPath}`);
-          callback([]);
-          return;
-        }
-        callback(rows);
-      });
-
-      db.close((err) => {
-        if (err) {
-          logger.error(`Error closing the database: ${err}`);
-        }
-      });
-    } catch (err) {
-      logger.error(`Unexpected error: ${err}`);
-      callback([]);
-    }
-  };
-
   loadApplications((apps) => {
-    loadPage('index', { apps });
+    loadPage(win, 'index', { apps });
   });
 
-  ipcMain.on('navigate-to-page', (event, page) => {
-    loadApplications((apps) => {
-      loadPage(page, { apps });
-    });
+  let cachedWinOfficeInfo = null;
+
+  ipcMain.on('navigate-to-page', async (event, page) => {
+    logger.info(`Navigating to page: ${page}`);
+    if (page === 'index') {
+      loadApplications((apps) => {
+        loadPage(win, page, { apps });
+      });
+    } else if (page === 'winoffice') {
+      loadPage(win, page, { winOfficeInfo: cachedWinOfficeInfo });
+
+      if (!cachedWinOfficeInfo) {
+        const win = BrowserWindow.getAllWindows()[0]; // Récupère la fenêtre principale
+
+        win.webContents.once('did-finish-load', () => {
+          logger.info('Getting Windows and Office information in the background');
+
+          // Exécuter la récupération des infos en arrière-plan
+          getWinOfficeInfo().then((winOfficeInfo) => {
+            cachedWinOfficeInfo = winOfficeInfo;
+            win.webContents.send('win-office-info', winOfficeInfo);
+          }).catch((error) => {
+            logger.error(`Error getting Windows and Office information: ${error}`);
+            win.webContents.send('win-office-info', null);
+          });
+        });
+      }
+    } else {
+      loadPage(win, page);
+    }
   });
 };
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   logger.info('Application is ready, checking for updates');
   checkForUpdates();
   createWindow();
+  setupInstallUninstallListeners();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

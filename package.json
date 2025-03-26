@@ -1,6 +1,6 @@
 {
   "name": "artemisstore",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "AppStore for PC",
   "main": "src/main.js",
   "scripts": {
@@ -30,7 +30,8 @@
     "ejs": "^3.1.10",
     "electron-updater": "^6.3.9",
     "sqlite3": "^5.1.7",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "build": {
     "appId": "artemisstore",
