@@ -1,13 +1,15 @@
 {
   "name": "artemisstore",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "AppStore for PC",
   "main": "src/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "electron .",
     "build": "electron-builder --publish never --dir --windows",
-    "sign-and-publish": "electron-builder --publish always"
+    "createexe": "electron-builder --publish never",
+    "sign-and-publish": "electron-builder --publish always",
+    "format": "prettier --write \"**/*.js\" && eslint --fix ."
   },
   "repository": {
     "type": "git",
@@ -22,13 +24,18 @@
   "devDependencies": {
     "cross-env": "^7.0.3",
     "dotenv-cli": "^8.0.0",
-    "electron": "^35.0.2",
-    "electron-builder": "^25.1.8"
+    "electron": "^35.5.1",
+    "electron-builder": "^25.1.8",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.1",
+    "prettier": "^3.5.3"
   },
   "dependencies": {
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
-    "electron-updater": "^6.3.9",
+    "electron-updater": "^6.6.2",
+    "node-windows": "^1.0.0-beta.8",
     "sqlite3": "^5.1.7",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
@@ -46,6 +53,10 @@
       {
         "from": "applications.db",
         "to": "applications.db"
+      },
+      {
+        "from": "services",
+        "to": "services"
       }
     ],
     "publish": {
@@ -59,7 +70,7 @@
     "win": {
       "target": "nsis",
       "icon": "src/renderer/static/img/favicon.ico",
-      "requestedExecutionLevel": "requireAdministrator",
+      "requestedExecutionLevel": "asInvoker",
       "verifyUpdateCodeSignature": false,
       "signtoolOptions": {
         "publisherName": "Noix.Del",
@@ -73,6 +84,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "mac": null,
+    "linux": null
   }
 }

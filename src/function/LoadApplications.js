@@ -19,65 +19,82 @@ const loadApplications = (callback) => {
     const defaultDbPath = path.join(process.resourcesPath, 'applications.db');
     logger.info(`Reading the database: ${userDbPath}`);
 
+    // Si la DB utilisateur existe et que la taille est différente de la DB par défaut → on remplace
+    if (fs.existsSync(userDbPath) && fs.existsSync(defaultDbPath)) {
+        const userSize = fs.statSync(userDbPath).size;
+        const defaultSize = fs.statSync(defaultDbPath).size;
+
+        if (userSize !== defaultSize) {
+            logger.warn(`Database size mismatch detected. Replacing user database.`);
+            fs.copyFileSync(defaultDbPath, userDbPath);
+        }
+    }
+
     // Copier la base de données si elle n'existe pas encore dans userData
     if (!fs.existsSync(userDbPath)) {
-      if (fs.existsSync(defaultDbPath) && fs.statSync(defaultDbPath).size > 0) {
-        fs.copyFileSync(defaultDbPath, userDbPath);
-        logger.info(`Database copied to ${userDbPath}`);
-      } else {
-        logger.error(`ERROR: Default database is missing or empty at ${defaultDbPath}`);
-      }
+        if (fs.existsSync(defaultDbPath) && fs.statSync(defaultDbPath).size > 0) {
+            fs.copyFileSync(defaultDbPath, userDbPath);
+            logger.info(`Database copied to ${userDbPath}`);
+        } else {
+            logger.error(`ERROR: Default database is missing or empty at ${defaultDbPath}`);
+        }
     }
+
+    // Si userDbPath existe mais est vide → on le remplace aussi
     if (fs.existsSync(userDbPath) && fs.statSync(userDbPath).size === 0) {
-      logger.warn(`WARNING: Database is empty! Replacing with default database.`);
-      fs.unlinkSync(userDbPath);  // Supprimer la base vide
-      fs.copyFileSync(defaultDbPath, userDbPath); // Recopier la base originale
+        logger.warn(`WARNING: Database is empty! Replacing with default database.`);
+        fs.unlinkSync(userDbPath);
+        fs.copyFileSync(defaultDbPath, userDbPath);
     }
 
     try {
-      const db = new sqlite3.Database(userDbPath, sqlite3.OPEN_READWRITE, (err) => {
-        if (err) {
-          logger.error(`Erreur ouverture DB: ${err.message}`);
-        }
-      });
-      db.all("SELECT * FROM applications", (err, rows) => {
-        if (err) {
-          logger.error(`Error reading the database: ${err}. ${userDbPath}`);
-          callback([]);
-          return;
-        }
+        const db = new sqlite3.Database(userDbPath, sqlite3.OPEN_READWRITE, (err) => {
+            if (err) {
+                logger.error(`Erreur ouverture DB: ${err.message}`);
+            }
+        });
+        db.all('SELECT * FROM applications', (err, rows) => {
+            if (err) {
+                logger.error(`Error reading the database: ${err}. ${userDbPath}`);
+                callback([]);
+                return;
+            }
 
-        // Traitement des éléments de la base de données
-        const AllApps = [];
-        const InstalledApps = getInstalledApps();
-        rows.forEach(row => {
-            const APPID = row.argument.includes('--id ') ? row.argument.split('--id ')[1] : null;
-            AllApps.push({
-                id: row.id,
-                name: row.name,
-                editor: row.editor,
-                description: row.description,
-                icon: row.icon,
-                is_cracked: row.is_cracked,
-                source: row.source,
-                category: row.category,
-                argument: row.argument,
-                is_installed: checkIfInstalled(APPID, row.name, InstalledApps)
+            const AllApps = [];
+            const InstalledApps = getInstalledApps();
+            rows.forEach((row) => {
+                AllApps.push({
+                    id: row.id,
+                    name: row.name,
+                    editor: row.editor,
+                    description: row.description,
+                    icon: row.icon,
+                    is_cracked: row.is_cracked,
+                    source: row.source,
+                    category: row.category,
+                    argument: row.argument,
+                    is_installed: checkIfInstalled(row.appid, row.name, InstalledApps),
+                    popularity: row.popularity,
+                    appid: row.appid,
+                    needadm: row.needadm,
+                });
+                logger.debug(row.name + ' ' + checkIfInstalled(row.appid, row.name, InstalledApps));
             });
-            logger.debug(row.name + ' ' + checkIfInstalled(APPID, row.name, InstalledApps));
+
+            // Trier les applications par popularité (0–100)
+            AllApps.sort((a, b) => a.popularity - b.popularity);
+
+            callback(AllApps);
         });
 
-        callback(AllApps);
-      });
-
-      db.close((err) => {
-        if (err) {
-          logger.error(`Error closing the database: ${err}`);
-        }
-      });
+        db.close((err) => {
+            if (err) {
+                logger.error(`Error closing the database: ${err}`);
+            }
+        });
     } catch (err) {
-      logger.error(`Unexpected error: ${err}`);
-      callback([]);
+        logger.error(`Unexpected error: ${err}`);
+        callback([]);
     }
 };
 

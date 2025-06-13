@@ -1,0 +1,132 @@
+<%- include('partials/headers', {page_title: "Paramètres"}) %>
+<!-- SERVIVE STATUS  -->
+<div class="container my-4">
+  <div id="service-card" class="card">
+    <div class="card-header text-center">
+      <h2>Service Windows ArtemisStore</h2>
+    </div>
+    <div class="card-body text-center">
+      <div class="service-status mb-3">
+        <span id="service-status-indicator" class="status-indicator"></span>
+        <span id="service-status-text" class="fw-bold">Pas installé</span>
+      </div>
+      <div class="service-actions">
+        <button id="install-service" class="btn btn-primary mx-2">Installer</button>
+        <button id="uninstall-service" class="btn btn-danger mx-2">Désinstaller</button>
+        <button id="start-service" class="btn btn-success mx-2">Démarrer</button>
+        <button id="stop-service" class="btn btn-warning mx-2">Arrêter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footers') %>
+
+<style>
+  .status-indicator {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    margin-right: 8px;
+    background-color: black; /* Noir par défaut pour "Pas installé" */
+    vertical-align: middle;
+  }
+
+  /* Clignotement doux */
+  .blink {
+    animation: blink-animation 1.5s infinite;
+  }
+
+  @keyframes blink-animation {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+    }
+  }
+</style>
+
+<script>
+  // Gestion du statut et des boutons
+  const statusIndicator = document.getElementById('service-status-indicator');
+  const statusText = document.getElementById('service-status-text');
+  const serviceCard = document.getElementById('service-card');
+
+  const installButton = document.getElementById('install-service');
+  const uninstallButton = document.getElementById('uninstall-service');
+  const startButton = document.getElementById('start-service');
+  const stopButton = document.getElementById('stop-service');
+
+  // Fonction pour mettre à jour l'état
+  function updateStatus(color, text, isActive, isInstalled) {
+    statusIndicator.style.backgroundColor = color;
+    statusText.textContent = text;
+
+    if (isActive) {
+      serviceCard.classList.remove('blink');
+      startButton.disabled = true;
+      stopButton.disabled = false;
+      installButton.disabled = true;
+      uninstallButton.disabled = false;
+    } else if (isInstalled) {
+      serviceCard.classList.add('blink');
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      installButton.disabled = true;
+      uninstallButton.disabled = false;
+    } else {
+      serviceCard.classList.add('blink');
+      startButton.disabled = true;
+      stopButton.disabled = true;
+      installButton.disabled = false;
+      uninstallButton.disabled = true;
+    }
+  }
+
+  // Fonction CheckServiceStatus
+  function checkServiceStatus() {
+    window.electron.send('check-service-status', {});
+
+    // Écoute des événements IPC pour mettre à jour l'état
+    window.electron.on('service-status', (msg) => {
+      //alert(msg.status);
+      if (msg.status === 'RUNNING') {
+        updateStatus('green', 'Actif', true, true);
+      } else if (msg.status === 'NOT_FOUND') {
+        updateStatus('black', 'Pas installé', false, false);
+      } else if (msg.status === 'STOPPED') {
+        updateStatus('red', 'Inactif', false, true);
+      }
+    });
+  }
+  // Initialisation au chargement de la page
+  document.addEventListener('DOMContentLoaded', () => {
+    // État initial : "Pas installé"
+    updateStatus('black', 'Pas installé', false, false);
+
+    checkServiceStatus();
+    setInterval(checkServiceStatus, 5000); // Vérifie le statut toutes les 5 secondes
+  });
+
+  // Gestion des boutons
+  installButton.addEventListener('click', () => {
+    window.electron.send('service-action-install', { });
+    checkServiceStatus();
+  });
+  uninstallButton.addEventListener('click', () => {
+    window.electron.send('service-action-uninstall', { });
+    checkServiceStatus();
+  });
+
+  startButton.addEventListener('click', () => {
+    window.electron.send('service-action-start', { });
+    checkServiceStatus();
+  });
+
+  stopButton.addEventListener('click', () => {
+    window.electron.send('service-action-stop', { });
+    checkServiceStatus();
+  });
+</script>
