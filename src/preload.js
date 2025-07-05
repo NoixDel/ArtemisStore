@@ -33,28 +33,4 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('openLogBtn').addEventListener('click', () => {
         ipcRenderer.send('open-log-terminal');
     });
-
-    // Handle install button click
-    document.querySelectorAll('.btn-install').forEach((button) => {
-        button.addEventListener('click', (event) => {
-            event.preventDefault();
-            const appId = button.getAttribute('data-app-id');
-            const appSource = button.getAttribute('data-app-source');
-            const appArgument = button.getAttribute('data-app-argument');
-            const appNeedAdm = button.getAttribute('data-app-needadm');
-            ipcRenderer.send('install-app', appId, appSource, appArgument, appNeedAdm);
-        });
-    });
-
-    // Handle uninstall button click
-    document.querySelectorAll('.btn-uninstall').forEach((button) => {
-        button.addEventListener('click', (event) => {
-            event.preventDefault();
-            const appId = button.getAttribute('data-app-id');
-            const appSource = button.getAttribute('data-app-source');
-            const appArgument = button.getAttribute('data-app-argument');
-            const appNeedAdm = button.getAttribute('data-app-needadm');
-            ipcRenderer.send('uninstall-app', appId, appSource, appArgument, appNeedAdm);
-        });
-    });
 });

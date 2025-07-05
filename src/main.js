@@ -11,6 +11,10 @@ const loadApplications = require('./function/LoadApplications');
 const { setupInstallUninstallListeners } = require('./function/InstallUninstall');
 const getWinOfficeInfo = require('./function/GetWinOfficeInfo');
 const { checkServiceStatus, setupServiceCheckListener } = require('./function/CheckService');
+const { getUpgradableApps, UpdatesAppsListener } = require('./function/UpdateApps');
+const { initSettingsManager, readSettings } = require('./function/settingsManager');
+
+const settings = readSettings();
 
 const createWindow = () => {
     const win = new BrowserWindow({
@@ -28,18 +32,30 @@ const createWindow = () => {
 
     win.setMenu(null);
 
-    loadApplications((apps) => {
-        loadPage(win, 'index', { apps });
+    loadPage(win, 'index', { apps: [] });
+
+    win.webContents.once('did-finish-load', () => {
+        logger.info('Page index.ejs chargée, envoi des applications...');
+        loadApplications((apps) => {
+            win.webContents.send('load-apps', apps);
+        });
     });
+
+
 
     let cachedWinOfficeInfo = null;
 
     ipcMain.on('navigate-to-page', async (event, page) => {
         logger.info(`Navigating to page: ${page}`);
         if (page === 'index') {
-            loadApplications((apps) => {
-                loadPage(win, page, { apps });
+            loadPage(win, 'index', { apps: [] });
+
+            win.webContents.once('did-finish-load', () => {
+                loadApplications((apps) => {
+                    win.webContents.send('load-apps', apps);
+                });
             });
+
         } else if (page === 'winoffice') {
             loadPage(win, page, { winOfficeInfo: cachedWinOfficeInfo });
 
@@ -61,6 +77,10 @@ const createWindow = () => {
                         });
                 });
             }
+        } else if (page === 'updates') {
+            loadPage(win, 'updates'); // pas besoin d’envoyer de données
+            const updates = await getUpgradableApps();
+            win.webContents.send('updates-list', updates); // données JS
         } else if (page === 'settings') {
             loadPage(win, page);
         } else {
@@ -82,9 +102,11 @@ const createWindow = () => {
 
 app.whenReady().then(async () => {
     logger.info('Application is ready, checking for updates');
-    checkForUpdates();
+    if (settings.autoUpdate) { setTimeout(() => checkForUpdates(), 2000); } else { logger.info('Auto-update is disabled in settings'); }
     createWindow();
     setupInstallUninstallListeners();
+    UpdatesAppsListener();
+    initSettingsManager(); 
     //setupServiceCheckListener('artemisinstallerservice.exe');
 
     app.on('activate', () => {

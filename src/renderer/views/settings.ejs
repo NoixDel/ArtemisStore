@@ -1,4 +1,7 @@
 <%- include('partials/headers', {page_title: "Paramètres"}) %>
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
 <!-- SERVIVE STATUS  -->
 <div class="container my-4">
   <div id="service-card" class="card">
@@ -19,9 +22,6 @@
     </div>
   </div>
 </div>
-
-<%- include('partials/footers') %>
-
 <style>
   .status-indicator {
     display: inline-block;
@@ -130,3 +130,80 @@
     checkServiceStatus();
   });
 </script>
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+
+<div class="container mt-4">
+    <h2 class="mb-4">Paramètres de l'application</h2>
+
+    <!-- <div class="mb-3">
+        <label for="theme" class="form-label">Thème</label>
+        <select id="theme" class="form-select">
+            <option value="dark">Sombre</option>
+            <option value="light">Clair</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="language" class="form-label">Langue</label>
+        <input type="text" id="language" class="form-control" placeholder="fr, en...">
+    </div> -->
+
+    <div class="mb-3">
+        <label for="autoUpdate" class="form-label">Mise à jour automatique</label>
+        <select id="autoUpdate" class="form-select">
+            <option value="true">Activée</option>
+            <option value="false">Désactivée</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="AllwaysShowTerminal" class="form-label">Afficher le terminal </label>
+        <select id="AllwaysShowTerminal" class="form-select">
+            <option value="true">Oui - Afficher le terminal à chaque fois</option>
+            <option value="false">Non - Laisser par défaut</option>
+        </select>
+    </div>
+    <div id="status" class="form-text text-success mt-3"></div>
+</div>
+
+<script>
+    // Requête des paramètres
+    window.electron.send('get-settings');
+
+    window.electron.on('settings-data', (settings) => {
+        // document.getElementById('theme').value = settings.theme;
+        // document.getElementById('language').value = settings.language;
+        document.getElementById('autoUpdate').value = settings.autoUpdate.toString();
+        document.getElementById('AllwaysShowTerminal').value = settings.AllwaysShowTerminal.toString();
+    });
+
+    window.electron.on('setting-updated', ({ key, value }) => {
+        const status = document.getElementById('status');
+        status.textContent = `✔️ ${key} mis à jour`;
+        setTimeout(() => status.textContent = '', 1500);
+    });
+
+    // Sauvegarde immédiate sur changement
+    // document.getElementById('theme').addEventListener('change', (e) => {
+    //     window.electron.send('update-setting', 'theme', e.target.value);
+    // });
+
+    // document.getElementById('language').addEventListener('input', (e) => {
+    //     window.electron.send('update-setting', 'language', e.target.value);
+    // });
+
+    document.getElementById('autoUpdate').addEventListener('change', (e) => {
+        window.electron.send('update-setting', 'autoUpdate', e.target.value === 'true');
+    });
+
+    document.getElementById('AllwaysShowTerminal').addEventListener('change', (e) => {
+        window.electron.send('update-setting', 'AllwaysShowTerminal', e.target.value === 'true');
+    });
+</script>
+
+
+
+<%- include('partials/footers') %>
+

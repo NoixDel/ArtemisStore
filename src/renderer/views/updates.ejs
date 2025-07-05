@@ -1,0 +1,91 @@
+<%- include('partials/headers', { page_title: "Mises à jour disponibles" }) %>
+
+<style>
+    .update-header {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .update-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .update-table th, .update-table td {
+        padding: 12px;
+        text-align: center;
+        border-bottom: 1px solid #dee2e6;
+        vertical-align: middle;
+    }
+    .update-table th {
+        background-color: #f8f9fa;
+    }
+    .btn-update-all {
+        float: right;
+        margin-bottom: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+    }
+    .btn-update-all:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="update-header">Mises à jour disponibles</h2>
+        <button id="updateAllBtn" class="btn-update-all" style="display: none;">Mettre à jour tout</button>
+    </div>
+    <table class="table update-table">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Version actuelle</th>
+                <th>Nouvelle version</th>
+            </tr>
+        </thead>
+        <tbody id="updateTableBody">
+            <tr>
+                <td colspan="3" class="text-center">Chargement des mises à jour...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    window.electron.on('updates-list', function(updates) {
+        const tableBody = document.getElementById('updateTableBody');
+        const updateAllBtn = document.getElementById('updateAllBtn');
+
+        tableBody.innerHTML = '';
+
+        if (updates.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center">Aucune mise à jour disponible</td></tr>`;
+            updateAllBtn.style.display = 'none';
+            return;
+        }
+
+        updateAllBtn.style.display = 'inline-block';
+
+        updates.forEach(update => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${update.name}</td>
+                <td>${update.current_version}</td>
+                <td>${update.new_version}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        updateAllBtn.onclick = () => {
+            window.electron.send('update-all-apps', updates);
+            updateAllBtn.disabled = true;
+            updateAllBtn.innerText = 'Mise à jour en cours en arrière plan...';
+        };
+    });
+</script>
+
+<%- include('partials/footers') %>

@@ -2,73 +2,137 @@
 
 <style>
     body {
-        background-color: #f4f4f4;
-        font-family: Arial, sans-serif;
+        background-color: #eef2f7;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 30px 15px;
     }
-    .container {
-        max-width: 900px;
-        margin: auto;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+
+    h2 {
+        text-align: center;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 30px;
     }
+
     .logo-container {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 25px;
     }
-    .info-container {
-        background: #fff;
-        padding: 15px;
+
+    .logo-container img {
+        max-width: 150px;
+    }
+
+    .info-container, .action-container {
+        background-color: #ffffff;
+        padding: 20px;
         border-radius: 10px;
-        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
     }
+
     .info-container p {
-        font-size: 1.1em;
+        font-size: 1rem;
+        color: #555;
+        margin-bottom: 12px;
     }
-    .action-container {
-        background: #fff;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+
+    .action-container h4 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #444;
+        margin-bottom: 15px;
     }
-    .btn-container {
-        text-align: center;
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 1rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: #0078d4;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background-color: #005fa3;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+    }
+
+    select.form-select {
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    .action-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .action-box {
+        flex: 1 1 45%;
+        min-width: 250px;
+    }
+
+    @media (max-width: 600px) {
+        .action-row {
+            flex-direction: column;
+        }
+
+        .action-box {
+            width: 100%;
+        }
+
+        select.form-select {
+            width: 100%;
+        }
     }
 </style>
 
-<div class="container mt-5">
-    <h2 class="text-center">Windows & Office Information</h2>
-    <div class="logo-container">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Windows_11_logo.svg/799px-Windows_11_logo.svg.png" alt="Logo" class="img-fluid" style="max-width: 150px;">
-    </div>
-    
-    <div class="info-container" id="win-office-info">
-        <% if (winOfficeInfo) { %>
-            <p><strong>Nom du système :</strong> <%= winOfficeInfo.osName %></p>
-            <p><strong>Édition de Windows :</strong> <%= winOfficeInfo.windowsEditionId %></p>
-            <p><strong>Version de Windows :</strong> <%= winOfficeInfo.osDisplayVersion %></p>
-            <p><strong>Architecture du système :</strong> <%= winOfficeInfo.osVersion %></p>
-            <p><strong>Activation de Windows :</strong> 
-                <span style="color: <%= winOfficeInfo.osActivationStatus ? "green" : "red" %>;">
-                    <%= winOfficeInfo.osActivationType %> <%= winOfficeInfo.osActivationStatus ? "✅" : "❌" %>
-                </span>
-            </p>
-        <% } else { %>
-            <p>récupération des informations</p>
-        <% } %>
-    </div>
-    
-    <div class="action-container">
-        <div class="text-center mb-3">
-            <h4>Activer Windows</h4>
-            <button class="btn btn-primary" id="activate-windows">Activer Windows</button>
-        </div>
-        <div class="text-center">
+<h2>Informations Windows & Office</h2>
+
+<div class="logo-container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Windows_11_logo.svg/799px-Windows_11_logo.svg.png" alt="Logo Windows">
+</div>
+
+<div class="info-container" id="win-office-info">
+    <% if (winOfficeInfo) { %>
+        <p><strong>Nom du système :</strong> <%= winOfficeInfo.osName %></p>
+        <p><strong>Édition de Windows :</strong> <%= winOfficeInfo.windowsEditionId %></p>
+        <p><strong>Version de Windows :</strong> <%= winOfficeInfo.osDisplayVersion %></p>
+        <p><strong>Architecture du système :</strong> <%= winOfficeInfo.osVersion %></p>
+        <p><strong>Activation de Windows :</strong>
+            <span style="color: <%= winOfficeInfo.osActivationStatus ? 'green' : 'red' %>;">
+                <%= winOfficeInfo.osActivationType %> <%= winOfficeInfo.osActivationStatus ? '✅' : '❌' %>
+            </span>
+        </p>
+    <% } else { %>
+        <p>Récupération des informations...</p>
+    <% } %>
+</div>
+
+<div class="action-container">
+    <div class="action-row">
+        <div class="action-box">
             <h4>Changer la version de Windows</h4>
-            <div class="d-flex justify-content-center">
-                <select class="form-select me-2 w-auto" id="change-version">
+            <div class="d-flex">
+                <select class="form-select" id="change-version">
                     <option selected>Choisir une version</option>
                     <option value="home">Windows Home</option>
                     <option value="pro">Windows Pro</option>
@@ -77,8 +141,13 @@
                 <button class="btn btn-success" id="apply-version">Appliquer</button>
             </div>
         </div>
+        <div class="action-box text-center">
+            <h4>Activer Windows</h4>
+            <button class="btn btn-primary" id="activate-windows">Activer Windows</button>
+        </div>
     </div>
 </div>
+
 <% if (!winOfficeInfo) { %>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -90,8 +159,8 @@
                         <p><strong>Version de Windows :</strong> ${data.osDisplayVersion}</p>
                         <p><strong>Architecture du système :</strong> ${data.osVersion}</p>
                         <p><strong>Activation de Windows :</strong> 
-                            <span style="color: ${data.osActivationStatus ? "green" : "red"};">
-                                ${data.osActivationType} ${data.osActivationStatus ? "✅" : "❌"}
+                            <span style="color: ${data.osActivationStatus ? 'green' : 'red'};">
+                                ${data.osActivationType} ${data.osActivationStatus ? '✅' : '❌'}
                             </span>
                         </p>
                     `;
@@ -102,6 +171,7 @@
         });
     </script>
 <% } %>
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("activate-windows").addEventListener("click", function() {
