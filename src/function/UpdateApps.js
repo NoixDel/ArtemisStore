@@ -6,28 +6,49 @@ const { ipcMain, BrowserWindow } = require('electron');
 const runcmd = require('../bin/runcmd');
 
 function parseWingetOutput(rawOutput) {
-    const lines = rawOutput.trim().split('\n');
+    const lines = rawOutput
+        .replace(/\r/g, '')
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
     const updates = [];
     const blacklist = ['winget', 'microsoft.vclibs', 'vcredist', 'windowsdesktop.runtime'];
 
-    // Trouver la ligne contenant les titres de colonnes
-    const headerIndex = lines.findIndex(line => line.includes('Nom') && line.includes('ID'));
-    if (headerIndex === -1) return updates; // Rien trouvé
+    const headerIndex = lines.findIndex(line =>
+        (line.includes('Nom') && line.includes('ID')) ||
+        (line.includes('Name') && line.includes('Id'))
+    );
+    if (headerIndex === -1) return updates;
 
-    for (let i = headerIndex + 2; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line || /^[-\s]+$/.test(line)) continue;
-        if (line.toLowerCase().includes('numéro') || line.toLowerCase().includes('déterminé')) continue;
+    const headerLine = lines[headerIndex];
+    const isFrench = headerLine.includes('Nom');
+    const startIndex = headerLine.indexOf(isFrench ? 'Nom' : 'Name');
+    const headerPart = headerLine.slice(startIndex);
 
-        const name = line.slice(0, 24).trim();
-        const id = line.slice(24, 48).trim();
-        const current_version = line.slice(48, 62).trim();
-        const available_version = line.slice(62, 76).trim();
-        const source = line.slice(76).trim();
+    const nameIndex = headerPart.indexOf(isFrench ? 'Nom' : 'Name');
+    const idIndex = headerPart.indexOf(isFrench ? 'ID' : 'Id');
+    const versionIndex = headerPart.indexOf('Version');
+    const availableIndex = headerPart.indexOf(isFrench ? 'Disponible' : 'Available');
+    const sourceIndex = headerPart.indexOf('Source');
+
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (/^[-\s]+$/.test(line)) continue;
+        if (/^\d+ mises? à niveau/.test(line)) continue;
+        if (/^\d+ upgrade/.test(line)) continue;
+        if (/^1 package\(s\)/.test(line)) continue;
+
+        // ⚠️ NE PAS découper ici → les données sont déjà alignées
+        const name = line.slice(nameIndex, idIndex).trim();
+        const id = line.slice(idIndex, versionIndex).trim();
+        const current_version = line.slice(versionIndex, availableIndex).trim();
+        const available_version = line.slice(availableIndex, sourceIndex).trim();
+        const source = line.slice(sourceIndex).trim();
 
         if (!name || !id || !available_version) continue;
         if (blacklist.some(b => id.toLowerCase().includes(b))) continue;
-        if (available_version.toLowerCase().includes('ez --include')) continue;
 
         updates.push({
             name,
