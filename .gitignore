@@ -48,3 +48,9 @@ release/
 *.csr
 *.pfx
 certificate/
+
+# Miscellaneous
+.eslintrc.js
+.prettierrc
+ImportEnv.ps1
+CalcLineOfCode.ps1

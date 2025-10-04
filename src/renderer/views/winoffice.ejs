@@ -1,3 +1,4 @@
+<!-- winoffice.ejs -->
 <%- include('partials/headers', {page_title: "Windows et Office"}) %>
 
 <style>
@@ -23,7 +24,7 @@
         max-width: 150px;
     }
 
-    .info-container, .action-container {
+    .info-container, .action-container, .advanced-container {
         background-color: #ffffff;
         padding: 20px;
         border-radius: 10px;
@@ -38,7 +39,8 @@
         margin-bottom: 12px;
     }
 
-    .action-container h4 {
+    .action-container h4,
+    .advanced-container h4 {
         font-size: 1.2rem;
         font-weight: 600;
         color: #444;
@@ -72,6 +74,19 @@
         background-color: #218838;
     }
 
+    .btn-advanced {
+        background-color: #f8f9fa;
+        color: #333;
+        margin: 5px 0;
+        width: 100%;
+        border: 1px solid #ccc;
+    }
+
+    .btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+
     select.form-select {
         padding: 8px 12px;
         border-radius: 8px;
@@ -90,6 +105,11 @@
         min-width: 250px;
     }
 
+    #global-refresh {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
     @media (max-width: 600px) {
         .action-row {
             flex-direction: column;
@@ -105,26 +125,16 @@
     }
 </style>
 
-<h2>Informations Windows & Office</h2>
+<div id="global-refresh">
+    <button class="btn btn-primary" id="refresh-info">🔄 Actualiser les informations</button>
+</div>
 
+<h2>Informations Windows</h2>
 <div class="logo-container">
     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Windows_11_logo.svg/799px-Windows_11_logo.svg.png" alt="Logo Windows">
 </div>
-
 <div class="info-container" id="win-office-info">
-    <% if (winOfficeInfo) { %>
-        <p><strong>Nom du système :</strong> <%= winOfficeInfo.osName %></p>
-        <p><strong>Édition de Windows :</strong> <%= winOfficeInfo.windowsEditionId %></p>
-        <p><strong>Version de Windows :</strong> <%= winOfficeInfo.osDisplayVersion %></p>
-        <p><strong>Architecture du système :</strong> <%= winOfficeInfo.osVersion %></p>
-        <p><strong>Activation de Windows :</strong>
-            <span style="color: <%= winOfficeInfo.osActivationStatus ? 'green' : 'red' %>;">
-                <%= winOfficeInfo.osActivationType %> <%= winOfficeInfo.osActivationStatus ? '✅' : '❌' %>
-            </span>
-        </p>
-    <% } else { %>
-        <p>Récupération des informations...</p>
-    <% } %>
+    <p>Récupération des informations... Cela peut prendre jusqu'à 30 secondes.</p>
 </div>
 
 <div class="action-container">
@@ -138,51 +148,163 @@
                     <option value="pro">Windows Pro</option>
                     <option value="enterprise">Windows Enterprise</option>
                 </select>
-                <button class="btn btn-success" id="apply-version">Appliquer</button>
+                <button class="btn btn-success" id="apply-version" disabled>Appliquer</button>
             </div>
         </div>
         <div class="action-box text-center">
             <h4>Activer Windows</h4>
-            <button class="btn btn-primary" id="activate-windows">Activer Windows</button>
+            <button class="btn btn-primary" id="activate-windows" disabled>Activer Windows</button>
         </div>
     </div>
 </div>
 
-<% if (!winOfficeInfo) { %>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            window.electron.on('win-office-info', (data) => {
-                if (data) {
-                    document.getElementById('win-office-info').innerHTML = `
-                        <p><strong>Nom du système :</strong> ${data.osName}</p>
-                        <p><strong>Édition de Windows :</strong> ${data.windowsEditionId}</p>
-                        <p><strong>Version de Windows :</strong> ${data.osDisplayVersion}</p>
-                        <p><strong>Architecture du système :</strong> ${data.osVersion}</p>
-                        <p><strong>Activation de Windows :</strong> 
-                            <span style="color: ${data.osActivationStatus ? 'green' : 'red'};">
-                                ${data.osActivationType} ${data.osActivationStatus ? '✅' : '❌'}
-                            </span>
-                        </p>
-                    `;
-                } else {
-                    document.getElementById('win-office-info').innerHTML = `<p>Erreur lors de la récupération des informations.</p>`;
-                }
-            });
-        });
-    </script>
-<% } %>
+<h2>Informations Microsoft Office</h2>
+<div class="logo-container">
+    <img src="https://msftstories.thesourcemediaassets.com/sites/113/2016/02/PreviewImage-768x354.png" alt="Logo Office">
+</div>
+<div class="info-container" id="office-info">
+    <p>Récupération des informations... Cela peut prendre jusqu'à 30 secondes.</p>
+</div>
+
+<div class="action-container">
+    <div class="action-row">
+        <div class="action-box text-center">
+            <h4>Télécharger Microsoft Office</h4>
+            <button class="btn btn-primary" id="download-office" disabled>Télécharger Office</button>
+        </div>
+        <div class="action-box text-center">
+            <h4>Activer Microsoft Office</h4>
+            <button class="btn btn-success" id="activate-office" disabled>Activer Office</button>
+        </div>
+    </div>
+</div>
+
+<div class="advanced-container">
+    <h4>Options avancées</h4>
+    <p style="color: #a94442;"><strong>⚠️ Attention :</strong> Ces actions peuvent modifier ou casser les licences de votre système. À utiliser uniquement si vous savez ce que vous faites.</p>
+    <div id="advanced-buttons"></div>
+</div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById("activate-windows").addEventListener("click", function() {
+    function renderInfo(data) {
+        if (!data) return;
+
+        const win = document.getElementById("win-office-info");
+        const office = document.getElementById("office-info");
+
+        if (!data.osName) return;
+
+        win.innerHTML = `
+            <p><strong>Nom du système :</strong> ${data.osName}</p>
+            <p><strong>Édition de Windows :</strong> ${data.windowsEditionId}</p>
+            <p><strong>Version de Windows :</strong> ${data.osDisplayVersion}</p>
+            <p><strong>Architecture du système :</strong> ${data.osVersion}</p>
+            <p><strong>Activation de Windows :</strong>
+                <span style="color: ${data.osActivationStatus ? 'green' : 'red'};">
+                    ${data.osActivationType} ${data.osActivationStatus ? '✅' : '❌'}
+                </span>
+            </p>
+        `;
+
+        if (data.officeInstalled) {
+            office.innerHTML = `
+                <p><strong>Version d’Office :</strong> ${data.officeVersion}</p>
+                <p><strong>Activation d’Office :</strong>
+                    <span style="color: ${data.officeActivated ? 'green' : 'red'};">
+                        ${data.officeActivated ? 'Activé ✅' : 'Non activé ❌'}
+                    </span>
+                </p>
+                <p><strong>Applications installées :</strong> ${data.officeApps.join(', ')}</p>
+            `;
+
+            if (Array.isArray(data.officeLicenses)) {
+                office.innerHTML += '<h4 style="margin-top: 20px;">Détails des licences Microsoft 365</h4>';
+                data.officeLicenses.forEach(lic => {
+                    office.innerHTML += `
+                        <div style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
+                            <p><strong>Produit :</strong> ${lic.Product}</p>
+                            <p><strong>Type de licence :</strong> ${lic.LicenseType}</p>
+                            <p><strong>Tenant ID :</strong> ${lic.TenantId}</p>
+                            ${lic.NotAfter ? `<p><strong>Expire le :</strong> ${new Date(lic.NotAfter).toLocaleString('fr-FR')}</p>` : ''}
+                            ${lic.NextRenewal ? `<p><strong>Renouvellement prévu le :</strong> ${new Date(lic.NextRenewal).toLocaleString('fr-FR')}</p>` : ''}
+                            ${lic.EntitlementStatus ? `<p><strong>Statut :</strong> ${lic.EntitlementStatus}</p>` : ''}
+                        </div>
+                    `;
+                });
+            }
+        } else {
+            office.innerHTML = `<p>Office n’est pas installé ou les informations sont indisponibles.</p>`;
+        }
+
+        document.querySelectorAll('.btn').forEach(btn => btn.disabled = false);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        window.electron.on('win-office-info', (data) => {
+            if (data) renderInfo(data);
+        });
+
+        document.getElementById("refresh-info").addEventListener("click", function () {
+            document.getElementById("win-office-info").innerHTML = '<p>Récupération des informations... Cela peut prendre jusqu\'à 30 secondes.</p>';
+            document.getElementById("office-info").innerHTML = '<p>Récupération des informations... Cela peut prendre jusqu\'à 30 secondes.</p>';
+            document.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+            window.electron.send('refresh-win-office-info');
+        });
+
+        document.getElementById("activate-windows").addEventListener("click", function () {
             alert("Bouton d'activation de Windows cliqué");
         });
 
-        document.getElementById("apply-version").addEventListener("click", function() {
+        document.getElementById("apply-version").addEventListener("click", function () {
             const selectedVersion = document.getElementById("change-version").value;
             if (selectedVersion !== "Choisir une version") {
                 alert("Changement de Windows vers " + selectedVersion);
             }
+        });
+
+        document.getElementById("download-office").addEventListener("click", function () {
+            window.electron.send("download-office");
+        });
+
+        window.electron.on("office-download-progress", (msg) => {
+            document.getElementById("office-info").innerHTML = `<p>${msg}</p>`;
+        });
+
+        window.electron.on("office-download-complete", (msg) => {
+            document.getElementById("office-info").innerHTML = `<p>${msg}</p>`;
+        });
+
+        document.getElementById("activate-office").addEventListener("click", () => {
+            document.getElementById("office-info").innerHTML = `<p>⏳ Activation de Microsoft Office en cours...</p>`;
+            window.electron.send("activate-office");
+        });
+
+        window.electron.on("office-activation-status", (msg) => {
+            document.getElementById("office-info").innerHTML = `<p>${msg}</p>`;
+        });
+
+
+        // Injecter les boutons avancés
+        const advancedButtons = [
+            "Check_Activation_Status",
+            "Change_Office_Edition",
+            "Change_Windows_Edition",
+            "Extract_OEM_Folder",
+            "HWID_Activation",
+            "KMS38_Activation",
+            "Ohook_Activation_AIO",
+            "Online_KMS_Activation",
+            "TSforge_Activation",
+            "MAS_AIO"
+        ];
+
+        const container = document.getElementById("advanced-buttons");
+        advancedButtons.forEach(name => {
+            const btn = document.createElement("button");
+            btn.textContent = `Démarrer ${name}.cmd`;
+            btn.className = "btn btn-advanced";
+            btn.onclick = () => window.electron.send("start-script", `${name}.cmd`);
+            container.appendChild(btn);
         });
     });
 </script>

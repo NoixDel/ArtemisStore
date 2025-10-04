@@ -30,6 +30,10 @@ window.addEventListener('DOMContentLoaded', () => {
         ipcRenderer.send('navigate-to-page', 'WinOptimisationsLink');
     });
 
+    document.getElementById('IntegrityLink').addEventListener('click', () => {
+        ipcRenderer.send('navigate-to-page', 'IntegrityLink');
+    });
+
     document.getElementById('openLogBtn').addEventListener('click', () => {
         ipcRenderer.send('open-log-terminal');
     });

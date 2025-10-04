@@ -3,6 +3,8 @@
 <!-- #################################################################################################### -->
 <!-- #################################################################################################### -->
 <!-- SERVIVE STATUS  -->
+
+<!--
 <div class="container my-4">
   <div id="service-card" class="card">
     <div class="card-header text-center">
@@ -130,6 +132,8 @@
     checkServiceStatus();
   });
 </script>
+-->
+<!-- #################################################################################################### -->
 <!-- #################################################################################################### -->
 <!-- #################################################################################################### -->
 <!-- #################################################################################################### -->
@@ -203,6 +207,55 @@
     });
 </script>
 
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+<!-- #################################################################################################### -->
+
+<div class="container mt-4">
+  <h2 class="mb-4">Winget</h2>
+  <div class="card">
+    <div class="card-header text-center">
+      <h3>Gestion de Winget</h3>
+    </div>
+    <div class="card-body text-center">
+      <p>Winget est un gestionnaire de paquets pour Windows. Il permet d'installer, de mettre à jour et de gérer des applications via la ligne de commande.
+      Si vous rencontrez des problèmes avec Winget, vous pouvez utiliser les boutons ci-dessous pour réparer les sources, mettre à jour le client Winget ou effectuer un test de fonctionnement.
+      </p>
+      <button id="winget-fix" class="btn btn-warning mx-2">🔧 Réparer les sources</button>
+      <button id="winget-update" class="btn btn-primary mx-2">⬆️ Mettre à jour Winget</button>
+      <button id="winget-test" class="btn btn-success mx-2">🖥️ Test Winget</button>
+    </div>
+  </div>
+  <div id="winget-status" class="form-text text-success mt-3"></div>
+</div>
+
+<script>
+  const wingetStatus = document.getElementById('winget-status');
+  const fixBtn = document.getElementById('winget-fix');
+  const updateBtn = document.getElementById('winget-update');
+  const testBtn = document.getElementById('winget-test');
+
+  fixBtn.addEventListener('click', () => {
+    window.electron.send('winget-fix-sources', {});
+    wingetStatus.textContent = "⏳ Réparation des sources en cours...";
+  });
+
+  updateBtn.addEventListener('click', () => {
+    window.electron.send('winget-update-client', {});
+    wingetStatus.textContent = "⏳ Mise à jour de Winget en cours...";
+  });
+
+  testBtn.addEventListener('click', () => {
+    window.electron.send('winget-test', {});
+    wingetStatus.textContent = "⏳ Test en cours... (une fenêtre CMD va s’ouvrir)";
+  });
+
+  window.electron.on('winget-status-msg', (msg) => {
+    wingetStatus.textContent = msg;
+    setTimeout(() => wingetStatus.textContent = '', 3000);
+  });
+</script>
 
 
 <%- include('partials/footers') %>

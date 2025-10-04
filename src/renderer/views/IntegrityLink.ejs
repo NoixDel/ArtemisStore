@@ -1,0 +1,82 @@
+<%- include('partials/headers', { page_title: "Intégrité de votre PC" }) %>
+
+<style>
+  body {
+    background-color: #f7f7f7;
+    font-family: Arial, sans-serif;
+  }
+
+  .integrity-container {
+    max-width: 700px;
+    margin: 50px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+
+  .integrity-container h2 {
+    margin-bottom: 10px;
+  }
+
+  .integrity-container p {
+    color: #555;
+    margin-bottom: 30px;
+  }
+
+  .btn-check {
+    padding: 12px 30px;
+    font-size: 18px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    display: inline-block !important;
+  }
+
+  .btn-check:hover {
+    background-color: #0056b3;
+  }
+
+  .result-box {
+    background: #f4f4f4;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 25px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    text-align: left;
+    font-family: Consolas, monospace;
+    display: none;
+  }
+</style>
+
+<div class="integrity-container">
+  <h2>Vérification du système</h2>
+  <p>Cette vérification permet de diagnostiquer automatiquement votre système Windows.</p>
+
+  <button class="btn-check" onclick="launchScan()">Lancer le diagnostic complet</button>
+
+  <div id="cmdOutput" class="result-box"></div>
+</div>
+
+<script>
+  function launchScan() {
+    const output = document.getElementById('cmdOutput');
+    output.style.display = 'block';
+    output.innerText = '🔎 Analyse en cours...\nCela peut durer plusieurs minutes.';
+
+    window.electron.send('run-integrity-check', 'full-scan');
+  }
+
+  window.electron.on('integrity-result', (result) => {
+    const output = document.getElementById('cmdOutput');
+    output.innerText = result;
+  });
+</script>
+
+<%- include('partials/footers') %>
