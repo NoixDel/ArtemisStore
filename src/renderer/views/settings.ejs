@@ -1,262 +1,168 @@
-<%- include('partials/headers', {page_title: "Paramètres"}) %>
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- SERVIVE STATUS  -->
+<%- include('partials/headers', {page_title: "Parametres"}) %>
 
-<!--
-<div class="container my-4">
-  <div id="service-card" class="card">
-    <div class="card-header text-center">
-      <h2>Service Windows ArtemisStore</h2>
-    </div>
-    <div class="card-body text-center">
-      <div class="service-status mb-3">
-        <span id="service-status-indicator" class="status-indicator"></span>
-        <span id="service-status-text" class="fw-bold">Pas installé</span>
-      </div>
-      <div class="service-actions">
-        <button id="install-service" class="btn btn-primary mx-2">Installer</button>
-        <button id="uninstall-service" class="btn btn-danger mx-2">Désinstaller</button>
-        <button id="start-service" class="btn btn-success mx-2">Démarrer</button>
-        <button id="stop-service" class="btn btn-warning mx-2">Arrêter</button>
-      </div>
-    </div>
-  </div>
-</div>
 <style>
-  .status-indicator {
-    display: inline-block;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    margin-right: 8px;
-    background-color: black; /* Noir par défaut pour "Pas installé" */
-    vertical-align: middle;
-  }
-
-  /* Clignotement doux */
-  .blink {
-    animation: blink-animation 1.5s infinite;
-  }
-
-  @keyframes blink-animation {
-    0%, 100% {
-      box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
     }
-    50% {
-      box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+
+    .setting-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
     }
-  }
+
+    .setting-card.wide {
+        grid-column: 1 / -1;
+    }
+
+    .setting-card label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 750;
+        color: #111827;
+    }
+
+    .setting-card p {
+        margin: 0 0 12px;
+        color: #6b7280;
+        font-size: 0.92rem;
+    }
+
+    .setting-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    #applicationsDbSources {
+        min-height: 110px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 0.9rem;
+    }
+
+    #status {
+        min-height: 24px;
+        margin-top: 16px;
+        font-weight: 650;
+    }
 </style>
 
-<script>
-  // Gestion du statut et des boutons
-  const statusIndicator = document.getElementById('service-status-indicator');
-  const statusText = document.getElementById('service-status-text');
-  const serviceCard = document.getElementById('service-card');
-
-  const installButton = document.getElementById('install-service');
-  const uninstallButton = document.getElementById('uninstall-service');
-  const startButton = document.getElementById('start-service');
-  const stopButton = document.getElementById('stop-service');
-
-  // Fonction pour mettre à jour l'état
-  function updateStatus(color, text, isActive, isInstalled) {
-    statusIndicator.style.backgroundColor = color;
-    statusText.textContent = text;
-
-    if (isActive) {
-      serviceCard.classList.remove('blink');
-      startButton.disabled = true;
-      stopButton.disabled = false;
-      installButton.disabled = true;
-      uninstallButton.disabled = false;
-    } else if (isInstalled) {
-      serviceCard.classList.add('blink');
-      startButton.disabled = false;
-      stopButton.disabled = true;
-      installButton.disabled = true;
-      uninstallButton.disabled = false;
-    } else {
-      serviceCard.classList.add('blink');
-      startButton.disabled = true;
-      stopButton.disabled = true;
-      installButton.disabled = false;
-      uninstallButton.disabled = true;
-    }
-  }
-
-  // Fonction CheckServiceStatus
-  function checkServiceStatus() {
-    window.electron.send('check-service-status', {});
-
-    // Écoute des événements IPC pour mettre à jour l'état
-    window.electron.on('service-status', (msg) => {
-      //alert(msg.status);
-      if (msg.status === 'RUNNING') {
-        updateStatus('green', 'Actif', true, true);
-      } else if (msg.status === 'NOT_FOUND') {
-        updateStatus('black', 'Pas installé', false, false);
-      } else if (msg.status === 'STOPPED') {
-        updateStatus('red', 'Inactif', false, true);
-      }
-    });
-  }
-  // Initialisation au chargement de la page
-  document.addEventListener('DOMContentLoaded', () => {
-    // État initial : "Pas installé"
-    updateStatus('black', 'Pas installé', false, false);
-
-    checkServiceStatus();
-    setInterval(checkServiceStatus, 5000); // Vérifie le statut toutes les 5 secondes
-  });
-
-  // Gestion des boutons
-  installButton.addEventListener('click', () => {
-    window.electron.send('service-action-install', { });
-    checkServiceStatus();
-  });
-  uninstallButton.addEventListener('click', () => {
-    window.electron.send('service-action-uninstall', { });
-    checkServiceStatus();
-  });
-
-  startButton.addEventListener('click', () => {
-    window.electron.send('service-action-start', { });
-    checkServiceStatus();
-  });
-
-  stopButton.addEventListener('click', () => {
-    window.electron.send('service-action-stop', { });
-    checkServiceStatus();
-  });
-</script>
--->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-
-<div class="container mt-4">
-    <h2 class="mb-4">Paramètres de l'application</h2>
-
-    <!-- <div class="mb-3">
-        <label for="theme" class="form-label">Thème</label>
-        <select id="theme" class="form-select">
-            <option value="dark">Sombre</option>
-            <option value="light">Clair</option>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label for="language" class="form-label">Langue</label>
-        <input type="text" id="language" class="form-control" placeholder="fr, en...">
-    </div> -->
-
-    <div class="mb-3">
-        <label for="autoUpdate" class="form-label">Mise à jour automatique</label>
+<div class="settings-grid">
+    <section class="setting-card">
+        <label for="autoUpdate">Mise a jour de l'application</label>
+        <p>Recherche automatiquement les nouvelles versions d'ArtemisStore.</p>
         <select id="autoUpdate" class="form-select">
-            <option value="true">Activée</option>
-            <option value="false">Désactivée</option>
+            <option value="true">Activee</option>
+            <option value="false">Desactivee</option>
         </select>
-    </div>
+    </section>
 
-    <div class="mb-3">
-        <label for="AllwaysShowTerminal" class="form-label">Afficher le terminal </label>
+    <section class="setting-card">
+        <label for="AllwaysShowTerminal">Afficher le terminal</label>
+        <p>Affiche les fenetres de commande pendant les installations, suppressions et mises a jour.</p>
         <select id="AllwaysShowTerminal" class="form-select">
-            <option value="true">Oui - Afficher le terminal à chaque fois</option>
-            <option value="false">Non - Laisser par défaut</option>
+            <option value="true">Oui</option>
+            <option value="false">Non</option>
         </select>
-    </div>
-    <div id="status" class="form-text text-success mt-3"></div>
+    </section>
+
+    <section class="setting-card">
+        <label for="updateAppsOnLogin">Mises a jour a l'ouverture de session</label>
+        <select id="updateAppsOnLogin" class="form-select">
+            <option value="true">Activee</option>
+            <option value="false">Desactivee</option>
+        </select>
+    </section>
+
+    <section class="setting-card wide">
+        <label for="applicationsDbSources">Sources applications.db</label>
+        <p>Une URL par ligne. Les liens GitHub classiques sont convertis automatiquement en liens raw.</p>
+        <textarea id="applicationsDbSources" class="form-control" spellcheck="false"></textarea>
+        <div class="setting-actions">
+            <button id="saveDbSourcesBtn" class="btn btn-primary">Enregistrer les sources</button>
+            <button id="refreshDbBtn" class="btn btn-outline-primary">Forcer l'actualisation</button>
+            <span id="dbStatus" class="text-muted"></span>
+        </div>
+    </section>
 </div>
 
+<div id="status" class="text-success"></div>
+
 <script>
-    // Requête des paramètres
+    const booleanFields = ['autoUpdate', 'AllwaysShowTerminal', 'updateAppsOnLogin'];
+    const dbSourcesField = document.getElementById('applicationsDbSources');
+
+    function applySettings(settings) {
+        booleanFields.forEach((field) => {
+            document.getElementById(field).value = Boolean(settings[field]).toString();
+        });
+
+        const sources = Array.isArray(settings.applicationsDbSources)
+            ? settings.applicationsDbSources
+            : [];
+        dbSourcesField.value = sources.join('\n');
+    }
+
+    function showStatus(message, isError = false) {
+        const status = document.getElementById('status');
+        status.classList.toggle('text-danger', isError);
+        status.classList.toggle('text-success', !isError);
+        status.textContent = message;
+        setTimeout(() => (status.textContent = ''), 2800);
+    }
+
     window.electron.send('get-settings');
 
-    window.electron.on('settings-data', (settings) => {
-        // document.getElementById('theme').value = settings.theme;
-        // document.getElementById('language').value = settings.language;
-        document.getElementById('autoUpdate').value = settings.autoUpdate.toString();
-        document.getElementById('AllwaysShowTerminal').value = settings.AllwaysShowTerminal.toString();
+    window.electron.on('settings-data', applySettings);
+
+    window.electron.on('setting-updated', ({ key, settings, error }) => {
+        if (settings) applySettings(settings);
+        showStatus(error ? `${key} non applique : ${error}` : 'Parametre mis a jour', Boolean(error));
     });
 
-    window.electron.on('setting-updated', ({ key, value }) => {
-        const status = document.getElementById('status');
-        status.textContent = `✔️ ${key} mis à jour`;
-        setTimeout(() => status.textContent = '', 1500);
+    window.electron.on('applications-db-refresh-result', ({ success, result, error }) => {
+        const dbStatus = document.getElementById('dbStatus');
+        document.getElementById('refreshDbBtn').disabled = false;
+        if (!success) {
+            dbStatus.className = 'text-danger';
+            dbStatus.textContent = error || 'Actualisation impossible';
+            return;
+        }
+
+        dbStatus.className = 'text-success';
+        dbStatus.textContent = result.updated
+            ? 'Base applications mise a jour'
+            : 'Base applications deja a jour';
     });
 
-    // Sauvegarde immédiate sur changement
-    // document.getElementById('theme').addEventListener('change', (e) => {
-    //     window.electron.send('update-setting', 'theme', e.target.value);
-    // });
-
-    // document.getElementById('language').addEventListener('input', (e) => {
-    //     window.electron.send('update-setting', 'language', e.target.value);
-    // });
-
-    document.getElementById('autoUpdate').addEventListener('change', (e) => {
-        window.electron.send('update-setting', 'autoUpdate', e.target.value === 'true');
+    booleanFields.forEach((field) => {
+        document.getElementById(field).addEventListener('change', (event) => {
+            window.electron.send('update-setting', field, event.target.value === 'true');
+        });
     });
 
-    document.getElementById('AllwaysShowTerminal').addEventListener('change', (e) => {
-        window.electron.send('update-setting', 'AllwaysShowTerminal', e.target.value === 'true');
+    document.getElementById('saveDbSourcesBtn').addEventListener('click', () => {
+        const sources = dbSourcesField.value
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean);
+        window.electron.send('update-setting', 'applicationsDbSources', sources);
+    });
+
+    document.getElementById('refreshDbBtn').addEventListener('click', () => {
+        const button = document.getElementById('refreshDbBtn');
+        const dbStatus = document.getElementById('dbStatus');
+        button.disabled = true;
+        dbStatus.className = 'text-muted';
+        dbStatus.textContent = 'Actualisation en cours...';
+        window.electron.send('refresh-applications-db');
     });
 </script>
-
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-<!-- #################################################################################################### -->
-
-<div class="container mt-4">
-  <h2 class="mb-4">Winget</h2>
-  <div class="card">
-    <div class="card-header text-center">
-      <h3>Gestion de Winget</h3>
-    </div>
-    <div class="card-body text-center">
-      <p>Winget est un gestionnaire de paquets pour Windows. Il permet d'installer, de mettre à jour et de gérer des applications via la ligne de commande.
-      Si vous rencontrez des problèmes avec Winget, vous pouvez utiliser les boutons ci-dessous pour réparer les sources, mettre à jour le client Winget ou effectuer un test de fonctionnement.
-      </p>
-      <button id="winget-fix" class="btn btn-warning mx-2">🔧 Réparer les sources</button>
-      <button id="winget-update" class="btn btn-primary mx-2">⬆️ Mettre à jour Winget</button>
-      <button id="winget-test" class="btn btn-success mx-2">🖥️ Test Winget</button>
-    </div>
-  </div>
-  <div id="winget-status" class="form-text text-success mt-3"></div>
-</div>
-
-<script>
-  const wingetStatus = document.getElementById('winget-status');
-  const fixBtn = document.getElementById('winget-fix');
-  const updateBtn = document.getElementById('winget-update');
-  const testBtn = document.getElementById('winget-test');
-
-  fixBtn.addEventListener('click', () => {
-    window.electron.send('winget-fix-sources', {});
-    wingetStatus.textContent = "⏳ Réparation des sources en cours...";
-  });
-
-  updateBtn.addEventListener('click', () => {
-    window.electron.send('winget-update-client', {});
-    wingetStatus.textContent = "⏳ Mise à jour de Winget en cours...";
-  });
-
-  testBtn.addEventListener('click', () => {
-    window.electron.send('winget-test', {});
-    wingetStatus.textContent = "⏳ Test en cours... (une fenêtre CMD va s’ouvrir)";
-  });
-
-  window.electron.on('winget-status-msg', (msg) => {
-    wingetStatus.textContent = msg;
-    setTimeout(() => wingetStatus.textContent = '', 3000);
-  });
-</script>
-
 
 <%- include('partials/footers') %>
-

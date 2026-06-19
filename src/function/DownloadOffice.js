@@ -3,59 +3,84 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const os = require('os');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const logger = require('../bin/logger');
+
+const OFFICE_SETUP_URL =
+    'https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365AppsBasicRetail&platform=x64&language=fr-fr&version=O16GA';
+const OFFICE_SETUP_NAME = 'OfficeSetup.exe';
 
 function setupDownloadOfficeListener() {
     ipcMain.on('download-office', async () => {
         const win = BrowserWindow.getFocusedWindow();
         if (!win) return;
 
-        const url = 'https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365AppsBasicRetail&platform=x64&language=fr-fr&version=O16GA';
-        const fileName = 'OfficeSetup.exe';
-        const tempDir = os.tmpdir();
-        const filePath = path.join(tempDir, fileName);
-
-        win.webContents.send('office-download-progress', `📥 Téléchargement de ${fileName}...`);
+        const filePath = path.join(os.tmpdir(), OFFICE_SETUP_NAME);
+        win.webContents.send(
+            'office-download-progress',
+            `Telechargement de ${OFFICE_SETUP_NAME}...`
+        );
 
         try {
-            await downloadFile(url, filePath, (percent) => {
-                win.webContents.send('office-download-progress', `Téléchargement : ${percent}%`);
+            await downloadFile(OFFICE_SETUP_URL, filePath, (percent) => {
+                win.webContents.send('office-download-progress', `Telechargement : ${percent}%`);
             });
 
-            win.webContents.send('office-download-progress', `✅ Téléchargement terminé. Lancement de l'installation...`);
+            win.webContents.send(
+                'office-download-progress',
+                "Telechargement termine. Lancement de l'installation..."
+            );
 
-            exec(`"${filePath}"`, (error) => {
+            execFile(filePath, { windowsHide: false }, (error) => {
                 if (error) {
                     logger.error(`[OfficeDownload] Erreur au lancement : ${error.message}`);
-                    win.webContents.send('office-download-progress', `❌ Erreur au lancement du setup.`);
+                    win.webContents.send(
+                        'office-download-progress',
+                        'Erreur au lancement du setup.'
+                    );
                 }
             });
-
         } catch (err) {
-            logger.error(`[OfficeDownload] Erreur lors du téléchargement : ${err.message}`);
-            win.webContents.send('office-download-progress', `❌ Erreur lors du téléchargement de Office.`);
+            logger.error(`[OfficeDownload] Erreur lors du telechargement : ${err.message}`);
+            win.webContents.send(
+                'office-download-progress',
+                'Erreur lors du telechargement de Office.'
+            );
         }
     });
 }
 
-function downloadFile(url, dest, onProgress) {
+function downloadFile(url, destination, onProgress) {
     return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(dest);
-        let receivedBytes = 0;
-        let totalBytes = 0;
-
-        https.get(url, (response) => {
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Statut HTTP : ${response.statusCode}`));
+        const request = https.get(url, (response) => {
+            if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+                response.resume();
+                downloadFile(response.headers.location, destination, onProgress)
+                    .then(resolve)
+                    .catch(reject);
+                return;
             }
 
-            totalBytes = parseInt(response.headers['content-length'], 10);
+            if (response.statusCode !== 200) {
+                response.resume();
+                reject(new Error(`Statut HTTP : ${response.statusCode}`));
+                return;
+            }
+
+            const file = fs.createWriteStream(destination);
+            const totalBytes = Number(response.headers['content-length']) || 0;
+            let receivedBytes = 0;
+            let lastPercent = -1;
 
             response.on('data', (chunk) => {
+                if (!totalBytes) return;
+
                 receivedBytes += chunk.length;
                 const percent = Math.round((receivedBytes / totalBytes) * 100);
-                onProgress(percent);
+                if (percent !== lastPercent) {
+                    lastPercent = percent;
+                    onProgress(percent);
+                }
             });
 
             response.pipe(file);
@@ -64,8 +89,13 @@ function downloadFile(url, dest, onProgress) {
                 file.close(resolve);
             });
 
-        }).on('error', (err) => {
-            fs.unlink(dest, () => reject(err));
+            file.on('error', (err) => {
+                fs.rm(destination, { force: true }, () => reject(err));
+            });
+        });
+
+        request.on('error', (err) => {
+            fs.rm(destination, { force: true }, () => reject(err));
         });
     });
 }

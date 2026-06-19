@@ -21,17 +21,13 @@ function setupInstallUninstallListeners() {
             return;
         }
 
-        const installCmd = `winget install -e --id ${appId} ${appArgument || ''} --accept-source-agreements --accept-package-agreements --silent`.trim();
+        const installCmd =
+            `winget install -e --id ${appId} ${appArgument || ''} --accept-source-agreements --accept-package-agreements --silent`.trim();
 
         try {
-            await runcmd(
-                installCmd,
-                appNeedAdm == 1,
-                false,
-                (type, data) => {
-                    win.webContents.send('install-progress', { app_id: appId, data });
-                }
-            );
+            await runcmd(installCmd, appNeedAdm == 1, false, (type, data) => {
+                win.webContents.send('install-progress', { app_id: appId, data });
+            });
 
             win.webContents.send('install-complete', {
                 app_id: appId,
@@ -63,17 +59,13 @@ function setupInstallUninstallListeners() {
             return;
         }
 
-        const uninstallCmd = `winget uninstall -e --id ${appId} ${appArgument || ''} --accept-source-agreements --silent`.trim();
+        const uninstallCmd =
+            `winget uninstall -e --id ${appId} ${appArgument || ''} --accept-source-agreements --silent`.trim();
 
         try {
-            await runcmd(
-                uninstallCmd,
-                appNeedAdm == 1,
-                false,
-                (type, data) => {
-                    win.webContents.send('uninstall-progress', { app_id: appId, data });
-                }
-            );
+            await runcmd(uninstallCmd, appNeedAdm == 1, false, (type, data) => {
+                win.webContents.send('uninstall-progress', { app_id: appId, data });
+            });
 
             win.webContents.send('uninstall-complete', {
                 app_id: appId,

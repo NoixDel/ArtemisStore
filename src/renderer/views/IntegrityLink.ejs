@@ -1,82 +1,401 @@
-<%- include('partials/headers', { page_title: "Intégrité de votre PC" }) %>
+<%- include('partials/headers', { page_title: "Integrite de votre PC" }) %>
 
 <style>
-  body {
-    background-color: #f7f7f7;
-    font-family: Arial, sans-serif;
+  .integrity-shell {
+    max-width: 1100px;
+    margin: 24px auto 48px;
   }
 
-  .integrity-container {
-    max-width: 700px;
-    margin: 50px auto;
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  .integrity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .integrity-header p {
+    margin: 4px 0 0;
+    color: #586069;
+  }
+
+  .scan-button {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    background: #0d6efd;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .scan-button:disabled {
+    opacity: 0.65;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .summary-box,
+  .check-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .summary-box {
+    padding: 16px;
+  }
+
+  .summary-box strong {
+    display: block;
+    font-size: 24px;
+  }
+
+  .checks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .check-card {
+    padding: 14px;
+  }
+
+  .check-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .check-title h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .status-pill {
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .status-ok { background: #d1e7dd; color: #0f5132; }
+  .status-warning { background: #fff3cd; color: #664d03; }
+  .status-error { background: #f8d7da; color: #842029; }
+  .status-info { background: #cff4fc; color: #055160; }
+
+  .check-summary {
+    color: #343a40;
+    margin-bottom: 8px;
+  }
+
+  .check-details {
+    margin: 0;
+    padding-left: 18px;
+    color: #586069;
+    font-size: 13px;
+  }
+
+  .empty-state {
+    border: 1px dashed #adb5bd;
+    border-radius: 8px;
+    padding: 28px;
     text-align: center;
+    color: #586069;
+    background: #fff;
   }
 
-  .integrity-container h2 {
+  .advanced-panel {
+    display: none;
+    margin-top: 20px;
+  }
+
+  .advanced-panel h2 {
+    margin-bottom: 6px;
+  }
+
+  .advanced-panel > p {
+    color: #586069;
+    margin-bottom: 14px;
+  }
+
+  .advanced-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .advanced-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+  }
+
+  .advanced-card h3 {
+    margin: 0 0 6px;
+    font-size: 17px;
+  }
+
+  .advanced-card p {
+    min-height: 42px;
+    color: #586069;
     margin-bottom: 10px;
   }
 
-  .integrity-container p {
-    color: #555;
-    margin-bottom: 30px;
-  }
-
-  .btn-check {
-    padding: 12px 30px;
-    font-size: 18px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-    display: inline-block !important;
-  }
-
-  .btn-check:hover {
-    background-color: #0056b3;
-  }
-
-  .result-box {
-    background: #f4f4f4;
+  .advanced-card button {
+    border: 1px solid #0d6efd;
     border-radius: 6px;
-    padding: 15px;
-    margin-top: 25px;
-    max-height: 300px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    text-align: left;
-    font-family: Consolas, monospace;
+    padding: 7px 12px;
+    background: #fff;
+    color: #0d6efd;
+    font-weight: 600;
+  }
+
+  .advanced-card button:disabled {
+    opacity: 0.6;
+  }
+
+  .advanced-output {
     display: none;
+    margin-top: 10px;
+    border-radius: 6px;
+    background: #111827;
+    color: #f8f9fa;
+    padding: 10px;
+    max-height: 260px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+  }
+
+  @media (max-width: 900px) {
+    .summary-row,
+    .checks-grid,
+    .advanced-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .integrity-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
   }
 </style>
 
-<div class="integrity-container">
-  <h2>Vérification du système</h2>
-  <p>Cette vérification permet de diagnostiquer automatiquement votre système Windows.</p>
+<div class="integrity-shell">
+  <div class="integrity-header">
+    <div>
+      <h2>Diagnostic d'integrite Windows</h2>
+      <p>Verifie antivirus, Defender, pare-feu, services systeme, disque, BitLocker, redemarrage et historique Windows Update.</p>
+    </div>
+    <button id="scanButton" class="scan-button">Lancer les checks</button>
+  </div>
 
-  <button class="btn-check" onclick="launchScan()">Lancer le diagnostic complet</button>
+  <div id="summary" class="summary-row" style="display: none;"></div>
+  <div id="results" class="checks-grid">
+    <div class="empty-state">Clique sur le bouton pour lancer un diagnostic complet en lecture seule.</div>
+  </div>
 
-  <div id="cmdOutput" class="result-box"></div>
+  <div id="advancedPanel" class="advanced-panel">
+    <h2>Checks pousses</h2>
+    <p>Ces actions sont plus longues. Les reparations systeme demandent l'UAC et peuvent prendre plusieurs minutes.</p>
+    <div id="advancedGrid" class="advanced-grid"></div>
+  </div>
 </div>
 
 <script>
-  function launchScan() {
-    const output = document.getElementById('cmdOutput');
-    output.style.display = 'block';
-    output.innerText = '🔎 Analyse en cours...\nCela peut durer plusieurs minutes.';
+  const scanButton = document.getElementById('scanButton');
+  const summary = document.getElementById('summary');
+  const results = document.getElementById('results');
+  const advancedPanel = document.getElementById('advancedPanel');
+  const advancedGrid = document.getElementById('advancedGrid');
 
-    window.electron.send('run-integrity-check', 'full-scan');
-  }
+  const labels = {
+    ok: 'OK',
+    warning: 'Attention',
+    error: 'Erreur',
+    info: 'Info',
+  };
+
+  const advancedChecks = [
+    {
+      id: 'defender-signature-update',
+      title: 'MAJ signatures Defender',
+      description: 'Force une mise a jour des signatures antivirus Microsoft Defender.',
+      admin: false,
+    },
+    {
+      id: 'defender-quick-scan',
+      title: 'Scan rapide Defender',
+      description: 'Lance un scan antivirus rapide via Microsoft Defender.',
+      admin: false,
+    },
+    {
+      id: 'sfc-verifyonly',
+      title: 'SFC verification',
+      description: 'Verifie les fichiers systeme sans tenter de reparation.',
+      admin: true,
+    },
+    {
+      id: 'sfc-scannow',
+      title: 'SFC /scannow',
+      description: 'Verifie et repare les fichiers systeme Windows.',
+      admin: true,
+    },
+    {
+      id: 'dism-checkhealth',
+      title: 'DISM CheckHealth',
+      description: "Verification rapide de l'image Windows.",
+      admin: true,
+    },
+    {
+      id: 'dism-scanhealth',
+      title: 'DISM ScanHealth',
+      description: "Analyse approfondie de l'image Windows.",
+      admin: true,
+    },
+    {
+      id: 'dism-restorehealth',
+      title: 'DISM RestoreHealth',
+      description: "Repare l'image Windows via Windows Update si necessaire.",
+      admin: true,
+    },
+    {
+      id: 'dism-analyze-component-store',
+      title: 'Analyse component store',
+      description: 'Verifie si le magasin WinSxS peut etre nettoye.',
+      admin: true,
+    },
+    {
+      id: 'chkdsk-scan',
+      title: 'CHKDSK /scan',
+      description: 'Analyse le disque C: en ligne sans redemarrage immediat.',
+      admin: true,
+    },
+    {
+      id: 'network-basics',
+      title: 'Reseau de base',
+      description: 'Verifie IP, DNS et connexion HTTPS vers Microsoft.',
+      admin: false,
+    },
+  ];
+
+  scanButton.addEventListener('click', () => {
+    scanButton.disabled = true;
+    scanButton.textContent = 'Analyse en cours...';
+    summary.style.display = 'none';
+    results.innerHTML = '<div class="empty-state">Analyse en cours, quelques secondes...</div>';
+    window.electron.send('run-integrity-check');
+  });
 
   window.electron.on('integrity-result', (result) => {
-    const output = document.getElementById('cmdOutput');
-    output.innerText = result;
+    scanButton.disabled = false;
+    scanButton.textContent = 'Relancer les checks';
+    renderSummary(result);
+    renderChecks(result.checks || []);
+    renderAdvancedChecks();
   });
+
+  window.electron.on('integrity-advanced-result', (result) => {
+    const button = document.querySelector(`[data-run-advanced="${result.id}"]`);
+    const output = document.getElementById(`advanced-output-${result.id}`);
+    if (button) {
+      const check = advancedChecks.find((item) => item.id === result.id);
+      button.disabled = false;
+      button.textContent = check && check.admin ? 'Lancer avec UAC' : 'Lancer';
+    }
+
+    if (output) {
+      const seconds = Math.round((result.durationMs || 0) / 1000);
+      output.style.display = 'block';
+      output.textContent = `[${labels[result.status] || result.status}] ${result.title}\nCode sortie: ${result.exitCode}\nDuree: ${seconds}s\n\n${result.output || ''}`;
+    }
+  });
+
+  function renderSummary(result) {
+    const total = (result.checks || []).length;
+    const ok = (result.checks || []).filter((check) => check.status === 'ok').length;
+
+    summary.style.display = 'grid';
+    summary.innerHTML = `
+      <div class="summary-box">
+        <span>Etat global</span>
+        <strong>${labels[result.overall] || result.overall}</strong>
+      </div>
+      <div class="summary-box">
+        <span>Checks OK</span>
+        <strong>${ok}/${total}</strong>
+      </div>
+      <div class="summary-box">
+        <span>A surveiller</span>
+        <strong>${(result.warnings || 0) + (result.errors || 0)}</strong>
+      </div>
+    `;
+  }
+
+  function renderChecks(checks) {
+    if (!checks.length) {
+      results.innerHTML = '<div class="empty-state">Aucun resultat retourne.</div>';
+      return;
+    }
+
+    results.innerHTML = checks.map((check) => {
+      const status = check.status || 'info';
+      const details = (check.details || []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join('');
+      return `
+        <div class="check-card">
+          <div class="check-title">
+            <h3>${escapeHtml(check.title)}</h3>
+            <span class="status-pill status-${status}">${labels[status] || status}</span>
+          </div>
+          <div class="check-summary">${escapeHtml(check.summary || '')}</div>
+          ${details ? `<ul class="check-details">${details}</ul>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderAdvancedChecks() {
+    advancedPanel.style.display = 'block';
+    advancedGrid.innerHTML = advancedChecks.map((check) => `
+      <div class="advanced-card">
+        <h3>${escapeHtml(check.title)}</h3>
+        <p>${escapeHtml(check.description)}${check.admin ? ' UAC requis.' : ''}</p>
+        <button data-run-advanced="${check.id}">${check.admin ? 'Lancer avec UAC' : 'Lancer'}</button>
+        <pre id="advanced-output-${check.id}" class="advanced-output"></pre>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('[data-run-advanced]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.getAttribute('data-run-advanced');
+        const output = document.getElementById(`advanced-output-${id}`);
+        button.disabled = true;
+        button.textContent = 'En cours...';
+        output.style.display = 'block';
+        output.textContent = 'Execution en cours. Patiente, certains checks peuvent durer longtemps...';
+        window.electron.send('run-integrity-advanced-check', id);
+      });
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 </script>
 
 <%- include('partials/footers') %>

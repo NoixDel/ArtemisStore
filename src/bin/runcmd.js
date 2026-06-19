@@ -1,60 +1,81 @@
-/*
-    exec.js
-    This script is responsible for executing commands in the system, such as installing or uninstalling applications.
-*/
-
-const logger = require('./logger');
 const { exec } = require('child_process');
-const { readSettings } = require('../function/settingsManager'); // <-- Mets le bon chemin ici
+const logger = require('./logger');
+const { readSettings } = require('../function/settingsManager');
 
-/**
- * Exécute une commande avec options UAC, affichage terminal et callback de progression.
- * @param {string} command - La commande à exécuter.
- * @param {boolean} uac - Si true, exécution avec privilèges administrateur.
- * @param {boolean} showTerminal - Si true, affiche la fenêtre du terminal.
- * @param {function|null} onProgress - Callback (type: 'stdout' | 'stderr', data: string)
- * @param {boolean} captureOutput - Si true, capture la sortie standard et d'erreur.
- */
-function runCommand(command, uac = false, showTerminal = false, onProgress = null, captureOutput = false) {
+function psSingleQuote(value) {
+    return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function buildVisiblePowerShellCommand(command) {
+    const encodedCommand = psSingleQuote(command);
+    return [
+        'powershell -NoProfile -ExecutionPolicy Bypass -Command',
+        '"$p = Start-Process powershell.exe',
+        `-ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-Command',${encodedCommand})`,
+        '-WindowStyle Normal',
+        '-Wait',
+        '-PassThru;',
+        'exit $p.ExitCode"',
+    ].join(' ');
+}
+
+function runCommand(
+    command,
+    uac = false,
+    showTerminal = false,
+    onProgress = null,
+    captureOutput = false
+) {
     return new Promise((resolve, reject) => {
-        // 🔥 Toujours relire les paramètres les plus récents
         const settings = readSettings();
         if (settings.AllwaysShowTerminal === true) {
             showTerminal = true;
-            logger.info('Paramètre AllwaysShowTerminal actif : terminal forcé.');
+            logger.info('Parametre AllwaysShowTerminal actif : terminal force.');
         }
 
         let finalCommand = command;
 
         if (uac) {
             const escaped = command.replace(/"/g, '""');
-            const psCommand = `Start-Process powershell -Verb RunAs -WindowStyle ${showTerminal ? 'Normal' : 'Hidden'} -ArgumentList '-NoProfile','-Command','${escaped}'`;
-            finalCommand = `powershell -NoProfile -WindowStyle ${showTerminal ? 'Normal' : 'Hidden'} -Command "${psCommand}"`;
-            logger.info(`[UAC] Exécution élevée de la commande.`);
+            const windowStyle = showTerminal ? 'Normal' : 'Hidden';
+            const psCommand = `Start-Process powershell -Verb RunAs -WindowStyle ${windowStyle} -ArgumentList '-NoProfile','-Command','${escaped}'`;
+            finalCommand = `powershell -NoProfile -WindowStyle ${windowStyle} -Command "${psCommand}"`;
+            logger.info('[UAC] Execution elevee de la commande.');
+        } else if (showTerminal && !captureOutput) {
+            finalCommand = buildVisiblePowerShellCommand(command);
         }
 
-        logger.info(`Commande exécutée : ${finalCommand}`);
+        logger.info(`Commande executee : ${finalCommand}`);
 
-        const proc = exec(finalCommand, { encoding: 'utf8' });
+        const proc = exec(finalCommand, {
+            encoding: 'utf8',
+            windowsHide: !showTerminal,
+            maxBuffer: 20 * 1024 * 1024,
+        });
 
-        let stdout = '', stderr = '';
+        let stdout = '';
+        let stderr = '';
 
         proc.stdout.on('data', (data) => {
-            const cleaned = data.trim();
             stdout += data;
+            const cleaned = data.trim();
+            if (!cleaned) return;
+
             logger.info(`[STDOUT] ${cleaned}`);
             if (onProgress) onProgress('stdout', cleaned);
         });
 
         proc.stderr.on('data', (data) => {
-            const cleaned = data.trim();
             stderr += data;
+            const cleaned = data.trim();
+            if (!cleaned) return;
+
             logger.warn(`[STDERR] ${cleaned}`);
             if (onProgress) onProgress('stderr', cleaned);
         });
 
         proc.on('close', (code) => {
-            logger.info(`Commande terminée avec code : ${code}`);
+            logger.info(`Commande terminee avec code : ${code}`);
             if (captureOutput) {
                 resolve({ stdout, stderr, exitCode: code });
             } else {
@@ -63,7 +84,7 @@ function runCommand(command, uac = false, showTerminal = false, onProgress = nul
         });
 
         proc.on('error', (err) => {
-            logger.error(`Erreur d'exécution : ${err.message}`);
+            logger.error(`Erreur d'execution : ${err.message}`);
             reject(err);
         });
     });

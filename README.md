@@ -11,11 +11,11 @@ L’objectif : **rendre accessible** ce qui est souvent réservé aux utilisateu
 - ✅ **Mise à jour automatique du Store**
 - ✅ **Installation et désinstallation simplifiées des logiciels**
 - ✅ **Mise à jour des logiciels**
-- ⏳ **Mise à jour automatique des logiciels installés**
-- ⏳ **Activation facile de Windows et changement de version intégré**
-- ⏳ **Activation facile de Office**
-- ⏳ **Suppression des bloatwares Windows**
-- ⏳ **Suppression des tâches de télémétrie Windows**
+- ✅ **Mise à jour automatique des logiciels installés**
+- ✅ **Activation facile de Windows et changement de version intégré**
+- ✅ **Activation facile de Office**
+- ✅ **Suppression des bloatwares Windows**
+- ✅ **Suppression des tâches de télémétrie Windows**
 
 > Les fonctionnalités marquées ⏳ sont actuellement en développement.
 

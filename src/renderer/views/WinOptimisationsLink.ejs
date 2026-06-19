@@ -1,0 +1,470 @@
+<%- include('partials/headers', { page_title: "Optimisation Windows" }) %>
+
+<style>
+  .opti-shell {
+    max-width: 1200px;
+    margin: 20px auto 48px;
+  }
+
+  .opti-topbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 14px;
+  }
+
+  .opti-topbar p {
+    color: #586069;
+    margin: 4px 0 0;
+  }
+
+  .control-panel {
+    position: sticky;
+    top: 12px;
+    z-index: 10;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+
+  .control-row {
+    display: grid;
+    grid-template-columns: 1.2fr 220px 180px auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .control-row input,
+  .control-row select {
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 9px 10px;
+    min-width: 0;
+  }
+
+  .button-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .button-row button,
+  .apply-button {
+    border: 1px solid #0d6efd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: #fff;
+    color: #0d6efd;
+    font-weight: 600;
+  }
+
+  .apply-button {
+    background: #0d6efd;
+    color: #fff;
+  }
+
+  .apply-button:disabled {
+    opacity: 0.65;
+  }
+
+  .selection-summary {
+    color: #495057;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .category-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0 0 14px;
+  }
+
+  .category-tab {
+    border: 1px solid #dee2e6;
+    border-radius: 999px;
+    background: #fff;
+    color: #495057;
+    padding: 7px 11px;
+    font-weight: 700;
+  }
+
+  .category-tab.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+  }
+
+  .category-section {
+    margin-bottom: 18px;
+  }
+
+  .category-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 8px;
+  }
+
+  .category-heading h2 {
+    font-size: 22px;
+    margin: 0;
+  }
+
+  .opti-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .opti-card {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 13px;
+  }
+
+  .opti-card.high {
+    border-color: #f1aeb5;
+  }
+
+  .opti-card.medium {
+    border-color: #ffe69c;
+  }
+
+  .opti-card label {
+    font-weight: 800;
+    margin-bottom: 3px;
+  }
+
+  .opti-card p {
+    color: #586069;
+    margin: 0 0 8px;
+    font-size: 13px;
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .badge-soft {
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    background: #e9ecef;
+    color: #495057;
+  }
+
+  .badge-admin { background: #fff3cd; color: #664d03; }
+  .badge-reboot { background: #f8d7da; color: #842029; }
+  .badge-reco { background: #d1e7dd; color: #0f5132; }
+  .badge-safe { background: #d1e7dd; color: #0f5132; }
+  .badge-medium { background: #fff3cd; color: #664d03; }
+  .badge-high { background: #f8d7da; color: #842029; }
+
+  .result-panel {
+    display: none;
+    margin-top: 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+  }
+
+  .result-line {
+    border-top: 1px solid #f1f3f5;
+    padding: 10px 0;
+  }
+
+  .result-line:first-child {
+    border-top: none;
+  }
+
+  .result-ok { color: #0f5132; }
+  .result-error { color: #842029; }
+
+  .empty-state {
+    border: 1px dashed #adb5bd;
+    border-radius: 8px;
+    padding: 24px;
+    color: #586069;
+    background: #fff;
+    text-align: center;
+  }
+
+  @media (max-width: 980px) {
+    .opti-topbar,
+    .control-row,
+    .opti-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="opti-shell">
+  <div class="opti-topbar">
+    <div>
+      <h2>Optimisation Windows</h2>
+      <p>Selectionne finement tes tweaks comme dans WinScript. Les options rouges sont puissantes ou plus subjectives.</p>
+    </div>
+    <div class="selection-summary" id="selectionSummary">0 selectionnee</div>
+  </div>
+
+  <div class="control-panel">
+    <div class="control-row">
+      <input id="searchInput" type="search" placeholder="Rechercher: telemetry, debloat, BSOD, Xbox...">
+      <select id="categoryFilter"></select>
+      <select id="riskFilter">
+        <option value="all">Tous les risques</option>
+        <option value="safe">Safe</option>
+        <option value="medium">Moyen</option>
+        <option value="high">Eleve</option>
+      </select>
+      <button id="applyButton" class="apply-button">Appliquer</button>
+    </div>
+    <div class="button-row">
+      <button id="selectRecommended">Selection recommandee</button>
+      <button id="selectVisible">Cocher visibles</button>
+      <button id="selectAll">Tout cocher</button>
+      <button id="clearAll">Tout decocher</button>
+    </div>
+  </div>
+
+  <div id="categoryTabs" class="category-tabs"></div>
+  <div id="categories"></div>
+  <div id="resultPanel" class="result-panel"></div>
+</div>
+
+<script>
+  const categories = document.getElementById('categories');
+  const categoryTabs = document.getElementById('categoryTabs');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const riskFilter = document.getElementById('riskFilter');
+  const searchInput = document.getElementById('searchInput');
+  const applyButton = document.getElementById('applyButton');
+  const resultPanel = document.getElementById('resultPanel');
+  const selectionSummary = document.getElementById('selectionSummary');
+
+  let optimizations = [];
+  let activeCategory = 'all';
+
+  const riskLabels = {
+    safe: 'Safe',
+    medium: 'Moyen',
+    high: 'Eleve',
+  };
+
+  window.electron.send('get-win-optimizations');
+
+  window.electron.on('win-optimizations-data', (items) => {
+    optimizations = items.map((item) => ({ risk: 'safe', ...item }));
+    setupFilters();
+    render();
+    updateSelectionSummary();
+  });
+
+  window.electron.on('win-optimizations-result', (result) => {
+    applyButton.disabled = false;
+    applyButton.textContent = 'Appliquer';
+    renderResult(result);
+  });
+
+  searchInput.addEventListener('input', render);
+  riskFilter.addEventListener('change', render);
+  categoryFilter.addEventListener('change', () => {
+    activeCategory = categoryFilter.value;
+    render();
+  });
+
+  document.getElementById('selectRecommended').addEventListener('click', () => {
+    setChecked((item) => item.recommended);
+  });
+
+  document.getElementById('selectVisible').addEventListener('click', () => {
+    const visible = new Set(getVisibleItems().map((item) => item.id));
+    setChecked((item, checkbox) => checkbox.checked || visible.has(item.id));
+  });
+
+  document.getElementById('selectAll').addEventListener('click', () => {
+    setChecked(() => true);
+  });
+
+  document.getElementById('clearAll').addEventListener('click', () => {
+    setChecked(() => false);
+  });
+
+  applyButton.addEventListener('click', () => {
+    const selected = getSelectedIds();
+    if (!selected.length) {
+      resultPanel.style.display = 'block';
+      resultPanel.innerHTML = '<strong>Aucune optimisation selectionnee.</strong>';
+      return;
+    }
+
+    const highRisk = selected.some((id) => optimizations.find((item) => item.id === id && item.risk === 'high'));
+    if (highRisk && !confirm('Certaines optimisations selectionnees sont a risque eleve ou de debloat. Continuer ?')) {
+      return;
+    }
+
+    applyButton.disabled = true;
+    applyButton.textContent = 'Application...';
+    resultPanel.style.display = 'block';
+    resultPanel.innerHTML = 'Application en cours. Accepte l UAC si Windows le demande.';
+    window.electron.send('apply-win-optimizations', selected);
+  });
+
+  function setupFilters() {
+    const cats = ['all', ...Array.from(new Set(optimizations.map((item) => item.category)))];
+    categoryFilter.innerHTML = cats.map((cat) => `<option value="${cat}">${cat === 'all' ? 'Toutes les categories' : escapeHtml(cat)}</option>`).join('');
+    categoryTabs.innerHTML = cats.map((cat) => `<button class="category-tab" data-category="${cat}">${cat === 'all' ? 'Tout' : escapeHtml(cat)}</button>`).join('');
+    categoryTabs.querySelectorAll('[data-category]').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeCategory = button.getAttribute('data-category');
+        categoryFilter.value = activeCategory;
+        render();
+      });
+    });
+  }
+
+  function render() {
+    const visible = getVisibleItems();
+    renderTabs();
+
+    if (!visible.length) {
+      categories.innerHTML = '<div class="empty-state">Aucune optimisation ne correspond aux filtres.</div>';
+      return;
+    }
+
+    const grouped = visible.reduce((acc, item) => {
+      acc[item.category] = acc[item.category] || [];
+      acc[item.category].push(item);
+      return acc;
+    }, {});
+
+    categories.innerHTML = Object.entries(grouped).map(([category, items]) => `
+      <section class="category-section">
+        <div class="category-heading">
+          <h2>${escapeHtml(category)}</h2>
+          <span>${items.length} tweak${items.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="opti-grid">${items.map(renderItem).join('')}</div>
+      </section>
+    `).join('');
+
+    document.querySelectorAll('[data-opti-id]').forEach((checkbox) => {
+      checkbox.addEventListener('change', updateSelectionSummary);
+    });
+    restoreCheckedState();
+  }
+
+  function renderTabs() {
+    categoryTabs.querySelectorAll('[data-category]').forEach((button) => {
+      button.classList.toggle('active', button.getAttribute('data-category') === activeCategory);
+    });
+  }
+
+  function getVisibleItems() {
+    const query = searchInput.value.trim().toLowerCase();
+    const risk = riskFilter.value;
+    return optimizations.filter((item) => {
+      const categoryOk = activeCategory === 'all' || item.category === activeCategory;
+      const riskOk = risk === 'all' || item.risk === risk;
+      const text = `${item.title} ${item.description} ${item.category} ${item.id}`.toLowerCase();
+      const queryOk = !query || text.includes(query);
+      return categoryOk && riskOk && queryOk;
+    });
+  }
+
+  function renderItem(item) {
+    return `
+      <div class="opti-card ${item.risk}">
+        <input id="opti-${item.id}" data-opti-id="${item.id}" value="${item.id}" type="checkbox" ${item.recommended ? 'checked' : ''}>
+        <div>
+          <label for="opti-${item.id}">${escapeHtml(item.title)}</label>
+          <p>${escapeHtml(item.description)}</p>
+          <div class="badge-row">
+            ${item.recommended ? '<span class="badge-soft badge-reco">Recommande</span>' : ''}
+            <span class="badge-soft badge-${item.risk}">${riskLabels[item.risk]}</span>
+            ${item.admin ? '<span class="badge-soft badge-admin">UAC</span>' : ''}
+            ${item.reboot ? '<span class="badge-soft badge-reboot">Redemarrage</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderResult(result) {
+    const lines = (result.results || []).map((item) => `
+      <div class="result-line">
+        <strong class="${item.status === 'ok' ? 'result-ok' : 'result-error'}">${item.status === 'ok' ? 'OK' : 'Erreur'} - ${escapeHtml(item.title)}</strong>
+        <div>${escapeHtml(item.output || '')}</div>
+      </div>
+    `).join('');
+
+    resultPanel.innerHTML = `
+      ${result.rebootRequired ? '<strong>Un redemarrage est recommande pour finaliser certaines optimisations.</strong>' : '<strong>Optimisations terminees.</strong>'}
+      ${lines}
+    `;
+  }
+
+  function setChecked(predicate) {
+    const existing = new Map(Array.from(document.querySelectorAll('[data-opti-id]')).map((checkbox) => [checkbox.value, checkbox]));
+    optimizations.forEach((item) => {
+      const checkbox = existing.get(item.id);
+      if (checkbox) checkbox.checked = Boolean(predicate(item, checkbox));
+      item._checked = checkbox ? checkbox.checked : Boolean(predicate(item, { checked: item._checked }));
+    });
+    render();
+    updateSelectionSummary();
+  }
+
+  function restoreCheckedState() {
+    document.querySelectorAll('[data-opti-id]').forEach((checkbox) => {
+      const item = optimizations.find((entry) => entry.id === checkbox.value);
+      if (item && typeof item._checked === 'boolean') checkbox.checked = item._checked;
+      if (item && typeof item._checked !== 'boolean') item._checked = checkbox.checked;
+      checkbox.addEventListener('change', () => {
+        if (item) item._checked = checkbox.checked;
+        updateSelectionSummary();
+      });
+    });
+    updateSelectionSummary();
+  }
+
+  function getSelectedIds() {
+    optimizations.forEach((item) => {
+      const checkbox = document.querySelector(`[data-opti-id="${item.id}"]`);
+      if (checkbox) item._checked = checkbox.checked;
+    });
+    return optimizations.filter((item) => item._checked).map((item) => item.id);
+  }
+
+  function updateSelectionSummary() {
+    const count = getSelectedIds().length;
+    const adminCount = optimizations.filter((item) => item._checked && item.admin).length;
+    const rebootCount = optimizations.filter((item) => item._checked && item.reboot).length;
+    selectionSummary.textContent = `${count} selectionnee${count > 1 ? 's' : ''} | ${adminCount} UAC | ${rebootCount} reboot`;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+</script>
+
+<%- include('partials/footers') %>

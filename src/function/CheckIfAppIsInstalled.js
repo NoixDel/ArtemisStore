@@ -5,14 +5,14 @@ const { execSync } = require('child_process');
 const logger = require('../bin/logger');
 
 function checkIfInstalled(appId, appName, installedApps) {
-    const appNameLower = appName.toLowerCase();
+    const appNameLower = String(appName || '').toLowerCase();
+    const appIdLower = String(appId || '').toLowerCase();
+
     for (const installedApp of installedApps) {
-        const installedAppLower = installedApp.toLowerCase();
-        // console.log(`Installed app: ${installedAppLower} - App ID: ${appId} - AppName: ${appName}`);  // Debugging statement
-        if (appId && installedAppLower.includes(appId.toLowerCase())) {
+        if (appIdLower && installedApp.includes(appIdLower)) {
             return true;
         }
-        if (installedAppLower.includes(appNameLower)) {
+        if (appNameLower && installedApp.includes(appNameLower)) {
             return true;
         }
     }
@@ -21,9 +21,15 @@ function checkIfInstalled(appId, appName, installedApps) {
 
 function getInstalledApps() {
     try {
-        const result = execSync('winget list', { encoding: 'utf-8' });
-        const installedApps = result.split('\n');
-        return installedApps;
+        const result = execSync('winget list', {
+            encoding: 'utf-8',
+            windowsHide: true,
+            maxBuffer: 20 * 1024 * 1024,
+        });
+        return result
+            .split('\n')
+            .map((line) => line.toLowerCase())
+            .filter(Boolean);
     } catch (e) {
         logger.error(`Error retrieving installed apps: ${e.message}`);
         logger.error(`Stack trace: ${e.stack}`);

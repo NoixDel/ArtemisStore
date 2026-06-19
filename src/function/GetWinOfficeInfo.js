@@ -1,9 +1,29 @@
-//GetWinOfficeInfo.js
-const path = require('path');
 const os = require('os');
 const { exec } = require('child_process');
 const { app } = require('electron');
 const logger = require('../bin/logger');
+const { ensureMASJsonScript } = require('./MASManager');
+
+async function getActivationJSON() {
+    const scriptPath = await ensureMASJsonScript();
+
+    return new Promise((resolve, reject) => {
+        exec(`cmd /c "${scriptPath}"`, { encoding: 'utf8', windowsHide: true }, (error, stdout) => {
+            if (error) {
+                logger.error("[GetWinOfficeInfo.js] Erreur lors de l'execution du script :", error);
+                return reject(error);
+            }
+
+            try {
+                const json = JSON.parse(stdout.trim());
+                resolve(json);
+            } catch (err) {
+                logger.error('[GetWinOfficeInfo.js] Erreur parsing JSON :', err.message);
+                reject(err);
+            }
+        });
+    });
+}
 
 // Lance le .cmd et récupère la sortie JSON
 function getScriptPath() {
@@ -42,7 +62,6 @@ async function getWinOfficeInfo() {
         const WindowsInfo = {
             platform: os.platform(),
 
-            // --- Infos Windows ---
             osName: windows.osName || 'N/A',
             osDisplayVersion: windows.osDisplayVersion || 'N/A',
             windowsEditionId: windows.windowsEditionId || 'N/A',
@@ -53,24 +72,26 @@ async function getWinOfficeInfo() {
             osActivationId: windows.activationId || null,
             isDigitalLicense: windows.isDigitalLicense,
 
-            // --- Infos Office ---
             officeInstalled: office.officeInstalled || false,
             officeVersion: office.officeVersion || 'Unknown',
             officeActivated:
                 office.officeActivated === true ||
                 (Array.isArray(office.officeLicenses) &&
-                office.officeLicenses.some(lic => lic.LicenseState === 'Licensed')),
+                    office.officeLicenses.some((lic) => lic.LicenseState === 'Licensed')),
             officeApps: office.officeApps || [],
-            officeLicenses: office.officeLicenses || []
+            officeLicenses: office.officeLicenses || [],
         };
 
-
-        logger.info('[GetWinOfficeInfo.js] : Windows and Office information retrieved successfully');
-        //logger.info(`Windows Info: ${JSON.stringify(WindowsInfo, null, 2)}`);
+        logger.info(
+            '[GetWinOfficeInfo.js] : Windows and Office information retrieved successfully'
+        );
         return WindowsInfo;
 
     } catch (error) {
-        logger.error('[GetWinOfficeInfo.js] : Error on retrieving Windows and Office information', error);
+        logger.error(
+            '[GetWinOfficeInfo.js] : Error on retrieving Windows and Office information',
+            error
+        );
         return {
             platform: os.platform(),
 
@@ -88,7 +109,7 @@ async function getWinOfficeInfo() {
             officeVersion: 'ERROR',
             officeActivated: false,
             officeApps: [],
-            officeLicenses: []
+            officeLicenses: [],
         };
     }
 }
