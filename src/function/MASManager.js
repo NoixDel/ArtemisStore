@@ -2,8 +2,10 @@ const { app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const { execFile } = require('child_process');
+const crypto = require('crypto');
+const AdmZip = require('adm-zip');
 const logger = require('../bin/logger');
+const { normalizeHttpsUrl } = require('../bin/security');
 
 const MAS_ROOT = 'microsoftactivationscript_mas';
 const JSON_RELATIVE = path.join('NoixDel-Edited-JSONOuput-Version', 'Check_Activation_JSON.cmd');
@@ -12,18 +14,19 @@ const OHOOK_RELATIVE = path.join(
     'Activators',
     'Ohook_Activation_AIO.cmd'
 );
-
 const JSON_DOWNLOAD_URLS = [
     'https://raw.githubusercontent.com/NoixDel/ArtemisStore/main/ressources/microsoftactivationscript_mas/NoixDel-Edited-JSONOuput-Version/Check_Activation_JSON.cmd',
     'https://raw.githubusercontent.com/NoixDel/ArtemisStore/master/ressources/microsoftactivationscript_mas/NoixDel-Edited-JSONOuput-Version/Check_Activation_JSON.cmd',
     'https://raw.githubusercontent.com/NoixDel/ArtemisStore/main/src/bin/microsoftactivationscript_mas/NoixDel-Edited-JSONOuput-Version/Check_Activation_JSON.cmd',
     'https://raw.githubusercontent.com/NoixDel/ArtemisStore/master/src/bin/microsoftactivationscript_mas/NoixDel-Edited-JSONOuput-Version/Check_Activation_JSON.cmd',
 ];
-
 const MAS_ARCHIVE_URLS = [
     'https://github.com/massgravel/Microsoft-Activation-Scripts/archive/refs/heads/master.zip',
     'https://github.com/massgravel/Microsoft-Activation-Scripts/archive/refs/heads/main.zip',
 ];
+const ALLOWED_MAS_HOSTS = ['raw.githubusercontent.com', 'github.com', 'codeload.github.com'];
+const MAX_CMD_BYTES = 2 * 1024 * 1024;
+const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
 
 function getMASCacheDir() {
     return path.join(app.getPath('appData'), 'ArtemisStore', 'resources', 'mas');
@@ -45,129 +48,154 @@ function copyFileIfExists(source, destination) {
     if (!fs.existsSync(source)) return false;
     ensureDirForFile(destination);
     fs.copyFileSync(source, destination);
-    logger.info(`[MASManager] Copie MAS: ${source} -> ${destination}`);
+    logger.info(`[MASManager] Copie MAS locale: ${source} -> ${destination}`);
     return true;
 }
 
-function downloadToFile(url, destination) {
-    return new Promise((resolve, reject) => {
-        ensureDirForFile(destination);
+function fileHash(filePath) {
+    const hash = crypto.createHash('sha256');
+    hash.update(fs.readFileSync(filePath));
+    return hash.digest('hex');
+}
 
-        const request = https.get(url, (response) => {
+function bufferHash(buffer) {
+    return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+function assertSafeZipEntry(entryName) {
+    const normalized = entryName.replace(/\\/g, '/');
+    if (path.isAbsolute(normalized) || normalized.includes('../') || normalized.startsWith('..')) {
+        throw new Error(`Entree ZIP MAS suspecte refusee : ${entryName}`);
+    }
+}
+
+function assertCmdBuffer(buffer, label, maxBytes = MAX_CMD_BYTES) {
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+        throw new Error(`${label} vide.`);
+    }
+    if (buffer.length > maxBytes) {
+        throw new Error(`${label} trop volumineux (${buffer.length} octets).`);
+    }
+    const preview = buffer.subarray(0, 512).toString('utf8').toLowerCase();
+    if (!preview.includes('@echo') && !preview.includes('powershell') && !preview.includes('cmd')) {
+        throw new Error(`${label} ne ressemble pas a un script CMD attendu.`);
+    }
+}
+
+function downloadToBuffer(url, maxBytes) {
+    return new Promise((resolve, reject) => {
+        let safeUrl;
+        try {
+            safeUrl = normalizeHttpsUrl(url, ALLOWED_MAS_HOSTS);
+        } catch (err) {
+            reject(err);
+            return;
+        }
+
+        const request = https.get(safeUrl, (response) => {
             if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
                 response.resume();
-                downloadToFile(response.headers.location, destination).then(resolve).catch(reject);
+                const location = new URL(response.headers.location, safeUrl).toString();
+                downloadToBuffer(location, maxBytes).then(resolve).catch(reject);
                 return;
             }
 
             if (response.statusCode !== 200) {
                 response.resume();
-                reject(new Error(`HTTP ${response.statusCode} pour ${url}`));
+                reject(new Error(`HTTP ${response.statusCode} pour ${safeUrl}`));
                 return;
             }
 
-            const file = fs.createWriteStream(destination);
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close(resolve);
+            const chunks = [];
+            let receivedBytes = 0;
+            response.on('data', (chunk) => {
+                receivedBytes += chunk.length;
+                if (receivedBytes > maxBytes) {
+                    request.destroy(new Error(`Telechargement MAS trop volumineux: ${safeUrl}`));
+                    return;
+                }
+                chunks.push(chunk);
             });
-            file.on('error', reject);
+            response.on('end', () => resolve(Buffer.concat(chunks)));
         });
 
+        request.setTimeout(30000, () => {
+            request.destroy(new Error(`Timeout telechargement MAS: ${safeUrl}`));
+        });
         request.on('error', reject);
     });
 }
 
-async function downloadFirstAvailable(urls, destination) {
+async function downloadFirstAvailable(urls, maxBytes) {
     let lastError = null;
     for (const url of urls) {
         try {
-            logger.info(`[MASManager] Telechargement MAS: ${url}`);
-            await downloadToFile(url, destination);
-            return destination;
+            logger.info(`[MASManager] Telechargement MAS controle: ${url}`);
+            return { source: url, buffer: await downloadToBuffer(url, maxBytes) };
         } catch (err) {
             lastError = err;
             logger.warn(`[MASManager] Echec telechargement ${url}: ${err.message}`);
         }
     }
 
-    throw lastError || new Error('Aucune URL MAS disponible.');
+    throw lastError || new Error('Aucune source MAS disponible.');
 }
 
-function expandArchive(zipPath, destination) {
-    return new Promise((resolve, reject) => {
-        fs.mkdirSync(destination, { recursive: true });
-        execFile(
-            'powershell.exe',
-            [
-                '-NoProfile',
-                '-ExecutionPolicy',
-                'Bypass',
-                '-Command',
-                `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${destination.replace(/'/g, "''")}' -Force`,
-            ],
-            { windowsHide: true },
-            (error, stdout, stderr) => {
-                if (error) {
-                    reject(new Error(stderr || error.message));
-                    return;
-                }
-
-                resolve();
-            }
-        );
-    });
-}
-
-function findFile(root, fileName) {
-    if (!fs.existsSync(root)) return null;
-    const entries = fs.readdirSync(root, { withFileTypes: true });
-    for (const entry of entries) {
-        const fullPath = path.join(root, entry.name);
-        if (entry.isDirectory()) {
-            const found = findFile(fullPath, fileName);
-            if (found) return found;
-        } else if (entry.name.toLowerCase() === fileName.toLowerCase()) {
-            return fullPath;
-        }
-    }
-    return null;
-}
-
-async function ensureMASJsonScript() {
-    const destination = path.join(getMASCacheDir(), JSON_RELATIVE);
-    if (fs.existsSync(destination)) return destination;
-
-    const bundled = path.join(getBundledMASDir(), JSON_RELATIVE);
-    if (copyFileIfExists(bundled, destination)) return destination;
-
-    await downloadFirstAvailable(JSON_DOWNLOAD_URLS, destination);
+function writeVerifiedScript(destination, buffer, source, label) {
+    assertCmdBuffer(buffer, label);
+    ensureDirForFile(destination);
+    fs.writeFileSync(destination, buffer, { mode: 0o600 });
+    logger.info(`[MASManager] ${label} telecharge depuis ${source}. sha256=${bufferHash(buffer)}`);
     return destination;
 }
 
-async function ensureOfficeActivationScript() {
-    const destination = path.join(getMASCacheDir(), OHOOK_RELATIVE);
-    if (fs.existsSync(destination)) return destination;
+function findScriptInArchive(archiveBuffer, expectedFileName) {
+    const zip = new AdmZip(archiveBuffer);
+    const entries = zip.getEntries();
+    for (const entry of entries) {
+        assertSafeZipEntry(entry.entryName);
+        if (entry.isDirectory) continue;
 
-    const bundled = path.join(getBundledMASDir(), OHOOK_RELATIVE);
+        const fileName = path.basename(entry.entryName).toLowerCase();
+        if (fileName === expectedFileName.toLowerCase()) {
+            const data = entry.getData();
+            assertCmdBuffer(data, expectedFileName);
+            return data;
+        }
+    }
+
+    throw new Error(`${expectedFileName} introuvable dans l archive MAS.`);
+}
+
+async function ensureScript(relativePath, label, downloadFallback) {
+    const destination = path.join(getMASCacheDir(), relativePath);
+    if (fs.existsSync(destination)) {
+        logger.info(`[MASManager] ${label} cache present. sha256=${fileHash(destination)}`);
+        return destination;
+    }
+
+    const bundled = path.join(getBundledMASDir(), relativePath);
     if (copyFileIfExists(bundled, destination)) return destination;
 
-    const tempRoot = path.join(app.getPath('temp'), `artemisstore-mas-${Date.now()}`);
-    const zipPath = path.join(tempRoot, 'mas.zip');
-    fs.mkdirSync(tempRoot, { recursive: true });
+    return downloadFallback(destination);
+}
 
-    try {
-        await downloadFirstAvailable(MAS_ARCHIVE_URLS, zipPath);
-        await expandArchive(zipPath, tempRoot);
-        const downloadedScript = findFile(tempRoot, 'Ohook_Activation_AIO.cmd');
-        if (!downloadedScript) {
-            throw new Error('Ohook_Activation_AIO.cmd introuvable dans l archive MAS.');
-        }
-        copyFileIfExists(downloadedScript, destination);
-        return destination;
-    } finally {
-        fs.rmSync(tempRoot, { recursive: true, force: true });
-    }
+async function ensureMASJsonScript() {
+    return ensureScript(JSON_RELATIVE, 'Script MAS JSON', async (destination) => {
+        const { source, buffer } = await downloadFirstAvailable(JSON_DOWNLOAD_URLS, MAX_CMD_BYTES);
+        return writeVerifiedScript(destination, buffer, source, 'Script MAS JSON');
+    });
+}
+
+async function ensureOfficeActivationScript() {
+    return ensureScript(OHOOK_RELATIVE, 'Script activation Office', async (destination) => {
+        const { source, buffer } = await downloadFirstAvailable(
+            MAS_ARCHIVE_URLS,
+            MAX_ARCHIVE_BYTES
+        );
+        const script = findScriptInArchive(buffer, 'Ohook_Activation_AIO.cmd');
+        return writeVerifiedScript(destination, script, source, 'Script activation Office');
+    });
 }
 
 module.exports = {

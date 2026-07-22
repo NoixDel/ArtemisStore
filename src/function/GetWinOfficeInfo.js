@@ -1,6 +1,5 @@
 const os = require('os');
-const { exec } = require('child_process');
-const { app } = require('electron');
+const { execFile } = require('child_process');
 const logger = require('../bin/logger');
 const { ensureMASJsonScript } = require('./MASManager');
 
@@ -8,51 +7,30 @@ async function getActivationJSON() {
     const scriptPath = await ensureMASJsonScript();
 
     return new Promise((resolve, reject) => {
-        exec(`cmd /c "${scriptPath}"`, { encoding: 'utf8', windowsHide: true }, (error, stdout) => {
-            if (error) {
-                logger.error("[GetWinOfficeInfo.js] Erreur lors de l'execution du script :", error);
-                return reject(error);
-            }
+        execFile(
+            'cmd.exe',
+            ['/d', '/s', '/c', scriptPath],
+            { encoding: 'utf8', windowsHide: true, maxBuffer: 1024 * 1024 * 4 },
+            (error, stdout, stderr) => {
+                if (error) {
+                    logger.error(
+                        `[GetWinOfficeInfo.js] Erreur execution script : ${stderr || error.message}`
+                    );
+                    reject(error);
+                    return;
+                }
 
-            try {
-                const json = JSON.parse(stdout.trim());
-                resolve(json);
-            } catch (err) {
-                logger.error('[GetWinOfficeInfo.js] Erreur parsing JSON :', err.message);
-                reject(err);
+                try {
+                    resolve(JSON.parse(stdout.trim()));
+                } catch (err) {
+                    logger.error(`[GetWinOfficeInfo.js] Erreur parsing JSON : ${err.message}`);
+                    reject(err);
+                }
             }
-        });
+        );
     });
 }
 
-// Lance le .cmd et récupère la sortie JSON
-function getScriptPath() {
-    const basePath = path.join(app.getPath('appData'), 'ArtemisStore', 'resources');
-    return path.join(basePath, 'microsoftactivationscript_mas', 'NoixDel-Edited-JSONOuput-Version', 'Check_Activation_JSON.cmd');
-}
-
-async function getActivationJSON() {
-    const scriptPath = getScriptPath();
-
-    return new Promise((resolve, reject) => {
-        exec(`cmd /c "${scriptPath}"`, { encoding: 'utf8', windowsHide: true }, (error, stdout) => {
-            if (error) {
-                logger.error('[GetWinOfficeInfo.js] Erreur lors de l\'exécution du script :', error);
-                return reject(error);
-            }
-
-            try {
-                const json = JSON.parse(stdout.trim());
-                resolve(json);
-            } catch (err) {
-                logger.error('[GetWinOfficeInfo.js] Erreur parsing JSON :', err.message);
-                reject(err);
-            }
-        });
-    });
-}
-
-// Fonction principale
 async function getWinOfficeInfo() {
     try {
         const data = await getActivationJSON();
@@ -61,7 +39,6 @@ async function getWinOfficeInfo() {
 
         const WindowsInfo = {
             platform: os.platform(),
-
             osName: windows.osName || 'N/A',
             osDisplayVersion: windows.osDisplayVersion || 'N/A',
             windowsEditionId: windows.windowsEditionId || 'N/A',
@@ -71,7 +48,6 @@ async function getWinOfficeInfo() {
             osPartialProductKey: windows.partialProductKey || null,
             osActivationId: windows.activationId || null,
             isDigitalLicense: windows.isDigitalLicense,
-
             officeInstalled: office.officeInstalled || false,
             officeVersion: office.officeVersion || 'Unknown',
             officeActivated:
@@ -82,19 +58,14 @@ async function getWinOfficeInfo() {
             officeLicenses: office.officeLicenses || [],
         };
 
-        logger.info(
-            '[GetWinOfficeInfo.js] : Windows and Office information retrieved successfully'
-        );
+        logger.info('[GetWinOfficeInfo.js] Informations Windows et Office recuperees.');
         return WindowsInfo;
-
     } catch (error) {
         logger.error(
-            '[GetWinOfficeInfo.js] : Error on retrieving Windows and Office information',
-            error
+            `[GetWinOfficeInfo.js] Error on retrieving Windows and Office information: ${error.message}`
         );
         return {
             platform: os.platform(),
-
             osName: 'ERROR',
             osDisplayVersion: 'ERROR',
             windowsEditionId: 'ERROR',
@@ -104,7 +75,6 @@ async function getWinOfficeInfo() {
             osPartialProductKey: null,
             osActivationId: null,
             isDigitalLicense: null,
-
             officeInstalled: false,
             officeVersion: 'ERROR',
             officeActivated: false,

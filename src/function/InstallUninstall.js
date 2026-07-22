@@ -4,6 +4,7 @@
 const { ipcMain, BrowserWindow } = require('electron');
 const logger = require('../bin/logger');
 const runcmd = require('../bin/runcmd');
+const { normalizeWingetArguments, validateWingetId } = require('../bin/security');
 
 function setupInstallUninstallListeners() {
     ipcMain.on('install-app', async (event, appId, appSource, appArgument, appNeedAdm) => {
@@ -21,10 +22,12 @@ function setupInstallUninstallListeners() {
             return;
         }
 
-        const installCmd =
-            `winget install -e --id ${appId} ${appArgument || ''} --accept-source-agreements --accept-package-agreements --silent`.trim();
-
         try {
+            const safeAppId = validateWingetId(appId);
+            const safeArgs = normalizeWingetArguments(appArgument);
+            const installCmd =
+                `winget install -e --id ${safeAppId} ${safeArgs} --accept-source-agreements --accept-package-agreements --silent`.trim();
+
             await runcmd(installCmd, appNeedAdm == 1, false, (type, data) => {
                 win.webContents.send('install-progress', { app_id: appId, data });
             });
@@ -59,10 +62,12 @@ function setupInstallUninstallListeners() {
             return;
         }
 
-        const uninstallCmd =
-            `winget uninstall -e --id ${appId} ${appArgument || ''} --accept-source-agreements --silent`.trim();
-
         try {
+            const safeAppId = validateWingetId(appId);
+            const safeArgs = normalizeWingetArguments(appArgument);
+            const uninstallCmd =
+                `winget uninstall -e --id ${safeAppId} ${safeArgs} --accept-source-agreements --silent`.trim();
+
             await runcmd(uninstallCmd, appNeedAdm == 1, false, (type, data) => {
                 win.webContents.send('uninstall-progress', { app_id: appId, data });
             });

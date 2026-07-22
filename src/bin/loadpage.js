@@ -8,6 +8,7 @@ const ejs = require('ejs');
 const fs = require('fs/promises');
 const logger = require('../bin/logger');
 const packageJson = require('../../package.json');
+const { isSafePageName } = require('./security');
 
 const appData = {
     version: packageJson.version,
@@ -16,6 +17,12 @@ const appData = {
 };
 
 const templateCache = new Map();
+
+function injectBaseHref(html, viewsPath) {
+    const baseHref = `<base href="${pathToFileURL(viewsPath).toString()}/">`;
+    if (/<base\s/i.test(html)) return html;
+    return html.replace(/<head>/i, `<head>\n    ${baseHref}`);
+}
 
 async function readTemplate(templatePath) {
     const stat = await fs.stat(templatePath);
@@ -30,16 +37,30 @@ async function readTemplate(templatePath) {
 }
 
 const loadPage = async (win, page, data = {}) => {
+    if (!isSafePageName(page)) {
+        logger.warn(`Page refusee : ${page}`);
+        return;
+    }
+
     const viewsPath = path.join(app.getAppPath(), 'src', 'renderer', 'views');
-    const templatePath = path.join(viewsPath, `${page}.ejs`);
+    const templatePath = path.resolve(viewsPath, `${page}.ejs`);
+    if (!templatePath.startsWith(path.resolve(viewsPath) + path.sep)) {
+        logger.warn(`Chemin template refuse : ${templatePath}`);
+        return;
+    }
     logger.info(`Loading page: ${templatePath}`);
 
     try {
         const template = await readTemplate(templatePath);
-        const html = ejs.render(template, { ...data, ...appData }, { views: [viewsPath] });
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`, {
-            baseURLForDataURL: `${pathToFileURL(viewsPath).toString()}/`,
-        });
+        const html = injectBaseHref(
+            ejs.render(template, { ...data, ...appData }, { views: [viewsPath] }),
+            viewsPath
+        );
+        const renderDir = path.join(app.getPath('userData'), 'rendered-pages');
+        await fs.mkdir(renderDir, { recursive: true });
+        const renderPath = path.join(renderDir, `${page}.html`);
+        await fs.writeFile(renderPath, html, 'utf8');
+        await win.loadURL(pathToFileURL(renderPath).toString());
     } catch (err) {
         logger.error(`Error loading page ${page}: ${err.message}`);
     }

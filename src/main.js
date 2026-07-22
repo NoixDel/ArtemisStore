@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const dns = require('dns');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
@@ -38,6 +38,7 @@ const { STARTUP_ARG } = require('./function/startupTask');
 const { setupIntegrityCheckListener } = require('./function/IntegrityCheck');
 const { setupWinOptimisationsListener } = require('./function/WinOptimisations');
 const { refreshApplicationDatabase } = require('./function/ApplicationDatabaseManager');
+const { isSafePageName } = require('./bin/security');
 
 let mainWindow = null;
 
@@ -99,11 +100,18 @@ const createWindow = () => {
             nodeIntegration: false,
             contextIsolation: true,
             enableRemoteModule: false,
+            sandbox: true,
+            webSecurity: true,
+            allowRunningInsecureContent: false,
         },
     });
 
     mainWindow = win;
     win.setMenu(null);
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+        callback(false);
+    });
     void loadApplicationsPage(win);
 
     win.on('closed', () => {
@@ -117,6 +125,11 @@ function setupMainIpcListeners() {
     ipcMain.on('navigate-to-page', async (event, page) => {
         const win = BrowserWindow.fromWebContents(event.sender) || getMainWindow();
         if (!win) return;
+
+        if (!isSafePageName(page)) {
+            logger.warn(`[main.js] Page refusee : ${page}`);
+            return;
+        }
 
         logger.info(`Navigating to page: ${page}`);
 
@@ -159,9 +172,17 @@ function setupMainIpcListeners() {
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         const logPath = `C:\\Users\\${user}\\AppData\\Roaming\\artemisstore\\logs\\app-${yyyy}-${mm}-${dd}.log`;
-        const command = `start powershell.exe -NoExit -Command "$host.ui.RawUI.WindowTitle = 'ArtemisStore LOG PAGE ${dd + '/' + mm + '/' + yyyy}. La page ne fonctionnera plus a partir de 00h00' ; Get-Content \\"${logPath}\\" -Wait"`;
-        logger.info(`[main.js]: show logging terminal ${command}`);
-        exec(command);
+        const title = `ArtemisStore LOG PAGE ${dd}/${mm}/${yyyy}. La page ne fonctionnera plus a partir de 00h00`;
+        const command = `$host.ui.RawUI.WindowTitle = '${title.replace(/'/g, "''")}'; Get-Content -LiteralPath '${logPath.replace(/'/g, "''")}' -Wait`;
+        logger.info(`[main.js]: ouverture terminal logs ${logPath}`);
+        execFile(
+            'powershell.exe',
+            ['-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', command],
+            { windowsHide: false },
+            (error) => {
+                if (error) logger.error(`[main.js] Echec ouverture logs : ${error.message}`);
+            }
+        );
     });
 
     ipcMain.on('open-external-url', (event, url) => {

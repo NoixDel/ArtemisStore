@@ -2,6 +2,7 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const { app } = require('electron');
 const path = require('path');
+const { redactSecrets } = require('./security');
 
 // Créez un répertoire de logs s'il n'existe pas
 let logDir = path.join(process.env.APPDATA, 'artemisstore', 'logs');
@@ -19,9 +20,11 @@ const logger = winston.createLogger({
     level: 'info',
     format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY/MM/DDT-HH:mm:ss.SSS' }),
-        winston.format.printf(({ timestamp, level, message }) => {
-            // Formatage du message de log
-            return `${timestamp} [${level.toUpperCase()}] : ${message}`;
+        winston.format.errors({ stack: true }),
+        winston.format.splat(),
+        winston.format.printf((info) => {
+            const details = info.stack || info.message;
+            return `${info.timestamp} [${info.level.toUpperCase()}] : ${redactSecrets(details)}`;
         })
     ),
     transports: [
@@ -29,7 +32,9 @@ const logger = winston.createLogger({
             format: winston.format.combine(
                 winston.format.colorize({ all: false }),
                 winston.format.simple(),
-                winston.format.printf((info) => Buffer.from(info.message, 'utf8').toString())
+                winston.format.printf((info) =>
+                    Buffer.from(redactSecrets(info.message), 'utf8').toString()
+                )
             ),
         }),
         new DailyRotateFile({

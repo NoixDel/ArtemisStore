@@ -117,40 +117,47 @@
     margin-top: 20px;
   }
 
-  .advanced-panel h2 {
+  .advanced-panel h2,
+  .security-panel h2 {
     margin-bottom: 6px;
   }
 
-  .advanced-panel > p {
+  .advanced-panel > p,
+  .security-panel > p {
     color: #586069;
     margin-bottom: 14px;
   }
 
-  .advanced-grid {
+  .advanced-grid,
+  .security-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
-  .advanced-card {
+  .advanced-card,
+  .security-card {
     border: 1px solid #dee2e6;
     border-radius: 8px;
     background: #fff;
     padding: 14px;
   }
 
-  .advanced-card h3 {
+  .advanced-card h3,
+  .security-card h3 {
     margin: 0 0 6px;
     font-size: 17px;
   }
 
-  .advanced-card p {
+  .advanced-card p,
+  .security-card p {
     min-height: 42px;
     color: #586069;
     margin-bottom: 10px;
   }
 
-  .advanced-card button {
+  .advanced-card button,
+  .security-card button {
     border: 1px solid #0d6efd;
     border-radius: 6px;
     padding: 7px 12px;
@@ -159,11 +166,23 @@
     font-weight: 600;
   }
 
-  .advanced-card button:disabled {
+  .advanced-card button:disabled,
+  .security-card button:disabled {
     opacity: 0.6;
   }
 
-  .advanced-output {
+  .security-card.safe button {
+    border-color: #198754;
+    color: #198754;
+  }
+
+  .security-card.audit button {
+    border-color: #6f42c1;
+    color: #6f42c1;
+  }
+
+  .advanced-output,
+  .security-output {
     display: none;
     margin-top: 10px;
     border-radius: 6px;
@@ -177,10 +196,96 @@
     font-size: 12px;
   }
 
+  .asr-manager {
+    margin-top: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+  }
+
+  .asr-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .asr-toolbar h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+
+  .asr-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .asr-actions button {
+    border: 1px solid #0d6efd;
+    border-radius: 6px;
+    padding: 7px 12px;
+    background: #fff;
+    color: #0d6efd;
+    font-weight: 600;
+  }
+
+  .asr-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .asr-table th,
+  .asr-table td {
+    border-top: 1px solid #edf0f2;
+    padding: 9px;
+    vertical-align: middle;
+  }
+
+  .asr-table th {
+    color: #586069;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+
+  .asr-table select {
+    min-width: 96px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 6px;
+    background: #fff;
+  }
+
+  .asr-history {
+    margin-top: 14px;
+  }
+
+  .asr-history-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .asr-event {
+    border: 1px solid #edf0f2;
+    border-radius: 6px;
+    padding: 9px;
+    background: #f8f9fa;
+    font-size: 13px;
+  }
+
+  .asr-event strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
   @media (max-width: 900px) {
     .summary-row,
     .checks-grid,
-    .advanced-grid {
+    .advanced-grid,
+    .security-grid {
       grid-template-columns: 1fr;
     }
 
@@ -210,6 +315,35 @@
     <p>Ces actions sont plus longues. Les reparations systeme demandent l'UAC et peuvent prendre plusieurs minutes.</p>
     <div id="advancedGrid" class="advanced-grid"></div>
   </div>
+
+  <div id="securityPanel" class="security-panel">
+    <h2>Securite du poste</h2>
+    <p>Actions progressives pour renforcer Windows sans passer brutalement en mode blocage. Les changements sensibles commencent en audit ou diagnostic.</p>
+    <div id="securityGrid" class="security-grid"></div>
+    <div class="asr-manager">
+      <div class="asr-toolbar">
+        <h3>Regles ASR Microsoft Defender</h3>
+        <div class="asr-actions">
+          <button id="asrDefaultButton">Default</button>
+          <button id="asrRefreshButton">Actualiser</button>
+          <button id="asrApplyButton">Appliquer avec UAC</button>
+        </div>
+      </div>
+      <div id="asrStatus" class="check-summary">Chargement des regles ASR...</div>
+      <div id="asrRulesContainer"></div>
+      <div class="asr-history">
+        <div class="asr-toolbar">
+          <h3>Historique ASR</h3>
+          <div class="asr-actions">
+            <button id="asrHistoryButton">Actualiser l'historique</button>
+          </div>
+        </div>
+        <div id="asrHistoryList" class="asr-history-list">
+          <div class="empty-state">Les detections audit/block apparaitront ici pendant que Defender les journalise.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -218,6 +352,16 @@
   const results = document.getElementById('results');
   const advancedPanel = document.getElementById('advancedPanel');
   const advancedGrid = document.getElementById('advancedGrid');
+  const securityGrid = document.getElementById('securityGrid');
+  const asrStatus = document.getElementById('asrStatus');
+  const asrRulesContainer = document.getElementById('asrRulesContainer');
+  const asrDefaultButton = document.getElementById('asrDefaultButton');
+  const asrRefreshButton = document.getElementById('asrRefreshButton');
+  const asrApplyButton = document.getElementById('asrApplyButton');
+  const asrHistoryButton = document.getElementById('asrHistoryButton');
+  const asrHistoryList = document.getElementById('asrHistoryList');
+  let asrRules = [];
+  let asrDefaults = {};
 
   const labels = {
     ok: 'OK',
@@ -289,6 +433,27 @@
     },
   ];
 
+  const securityActions = [
+    {
+      id: 'microsoft-baseline-safe',
+      title: 'Baseline Microsoft officielle',
+      description: 'Active pare-feu, protections Defender de base, cloud protection, samples sûrs et PUA.',
+      tone: 'safe',
+    },
+    {
+      id: 'defender-hardened',
+      title: 'Protections Defender renforcees',
+      description: 'Renforce Defender avec cloud high, signatures, Network Protection et Controlled Folder Access en audit.',
+      tone: 'safe',
+    },
+    {
+      id: 'hardware-security-check',
+      title: 'Chiffrement + materiel',
+      description: 'Controle TPM, Secure Boot, BitLocker et VBS sans activer de chiffrement automatiquement.',
+      tone: 'audit',
+    },
+  ];
+
   scanButton.addEventListener('click', () => {
     scanButton.disabled = true;
     scanButton.textContent = 'Analyse en cours...';
@@ -303,6 +468,7 @@
     renderSummary(result);
     renderChecks(result.checks || []);
     renderAdvancedChecks();
+    renderSecurityActions();
   });
 
   window.electron.on('integrity-advanced-result', (result) => {
@@ -319,6 +485,46 @@
       output.style.display = 'block';
       output.textContent = `[${labels[result.status] || result.status}] ${result.title}\nCode sortie: ${result.exitCode}\nDuree: ${seconds}s\n\n${result.output || ''}`;
     }
+  });
+
+  window.electron.on('security-action-result', (result) => {
+    const button = document.querySelector(`[data-run-security="${result.id}"]`);
+    const output = document.getElementById(`security-output-${result.id}`);
+    if (button) {
+      button.disabled = false;
+      button.textContent = result.admin ? 'Appliquer avec UAC' : 'Appliquer';
+    }
+
+    if (output) {
+      const seconds = Math.round((result.durationMs || 0) / 1000);
+      output.style.display = 'block';
+      output.textContent = `[${labels[result.status] || result.status}] ${result.title}\nCode sortie: ${result.exitCode}\nDuree: ${seconds}s\n\n${result.output || ''}`;
+    }
+  });
+
+  window.electron.on('asr-state-result', (payload) => {
+    asrRules = payload.rules || [];
+    asrDefaults = payload.defaults || {};
+    asrStatus.textContent = payload.success ? 'Etat ASR actuel charge.' : `Lecture ASR impossible: ${payload.error}`;
+    renderAsrRules();
+  });
+
+  window.electron.on('asr-rules-result', (payload) => {
+    asrApplyButton.disabled = false;
+    asrApplyButton.textContent = 'Appliquer avec UAC';
+    if (!payload.success) {
+      asrStatus.textContent = `Application ASR impossible: ${payload.error}`;
+      return;
+    }
+
+    asrStatus.textContent = 'Regles ASR appliquees. Les detections audit/block sont surveillees via les evenements Defender.';
+    asrRules = payload.result.rules || asrRules;
+    renderAsrRules();
+    window.electron.send('get-asr-history');
+  });
+
+  window.electron.on('asr-history-result', (payload) => {
+    renderAsrHistory(payload.events || [], payload.error);
   });
 
   function renderSummary(result) {
@@ -388,6 +594,93 @@
     });
   }
 
+  function renderSecurityActions() {
+    securityGrid.innerHTML = securityActions.map((action) => `
+      <div class="security-card ${action.tone}">
+        <h3>${escapeHtml(action.title)}</h3>
+        <p>${escapeHtml(action.description)} UAC requis.</p>
+        <button data-run-security="${action.id}">Appliquer avec UAC</button>
+        <pre id="security-output-${action.id}" class="security-output"></pre>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('[data-run-security]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.getAttribute('data-run-security');
+        const output = document.getElementById(`security-output-${id}`);
+        button.disabled = true;
+        button.textContent = 'Application...';
+        output.style.display = 'block';
+        output.textContent = 'Application en cours. Accepte l UAC si Windows le demande...';
+        window.electron.send('run-security-action', id);
+      });
+    });
+  }
+
+  function renderAsrRules() {
+    if (!asrRules.length) {
+      asrRulesContainer.innerHTML = '<div class="empty-state">Aucune regle ASR chargee.</div>';
+      return;
+    }
+
+    asrRulesContainer.innerHTML = `
+      <table class="asr-table">
+        <thead>
+          <tr>
+            <th>Regle</th>
+            <th>Categorie</th>
+            <th>Mode</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${asrRules.map((rule) => `
+            <tr>
+              <td>
+                <strong>${escapeHtml(rule.title)}</strong><br>
+                <small>${escapeHtml(rule.id)}</small>
+              </td>
+              <td>${escapeHtml(rule.category || '')}</td>
+              <td>
+                <select data-asr-mode="${rule.id}">
+                  <option value="none"${rule.mode === 'none' ? ' selected' : ''}>None</option>
+                  <option value="audit"${rule.mode === 'audit' ? ' selected' : ''}>Audit</option>
+                  <option value="on"${rule.mode === 'on' ? ' selected' : ''}>On</option>
+                </select>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function collectAsrModes() {
+    const modes = {};
+    document.querySelectorAll('[data-asr-mode]').forEach((select) => {
+      modes[select.getAttribute('data-asr-mode')] = select.value;
+    });
+    return modes;
+  }
+
+  function renderAsrHistory(events, error) {
+    if (error) {
+      asrHistoryList.innerHTML = `<div class="empty-state">Historique ASR indisponible: ${escapeHtml(error)}</div>`;
+      return;
+    }
+
+    if (!events.length) {
+      asrHistoryList.innerHTML = '<div class="empty-state">Aucune detection ASR recente dans le journal Defender.</div>';
+      return;
+    }
+
+    asrHistoryList.innerHTML = events.map((event) => `
+      <div class="asr-event">
+        <strong>${escapeHtml(event.timeCreated)} - Event ${escapeHtml(event.id)}</strong>
+        <span>${escapeHtml(event.message || '')}</span>
+      </div>
+    `).join('');
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, '&amp;')
@@ -396,6 +689,36 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
+
+  renderSecurityActions();
+  window.electron.send('get-asr-state');
+  window.electron.send('get-asr-history');
+
+  asrDefaultButton.addEventListener('click', () => {
+    asrRules = asrRules.map((rule) => ({
+      ...rule,
+      mode: asrDefaults[rule.id] || rule.defaultMode || 'audit',
+    }));
+    asrStatus.textContent = 'Preset Default charge. Clique sur Appliquer avec UAC pour le poser sur Defender.';
+    renderAsrRules();
+  });
+
+  asrRefreshButton.addEventListener('click', () => {
+    asrStatus.textContent = 'Actualisation ASR...';
+    window.electron.send('get-asr-state');
+  });
+
+  asrApplyButton.addEventListener('click', () => {
+    asrApplyButton.disabled = true;
+    asrApplyButton.textContent = 'Application...';
+    asrStatus.textContent = 'Application des regles ASR en cours. Accepte l UAC si Windows le demande.';
+    window.electron.send('set-asr-rules', collectAsrModes());
+  });
+
+  asrHistoryButton.addEventListener('click', () => {
+    asrHistoryList.innerHTML = '<div class="empty-state">Lecture de l historique ASR...</div>';
+    window.electron.send('get-asr-history');
+  });
 </script>
 
 <%- include('partials/footers') %>

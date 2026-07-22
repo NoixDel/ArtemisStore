@@ -1,5 +1,6 @@
 // preload.js
 // This script is loaded into the renderer process and is used to expose Electron APIs to the window object.
+/* global window, document */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -8,6 +9,8 @@ const allowedSendChannels = new Set([
     'apply-win-optimizations',
     'download-office',
     'get-settings',
+    'get-asr-history',
+    'get-asr-state',
     'get-win-optimizations',
     'install-app',
     'navigate-to-page',
@@ -17,6 +20,8 @@ const allowedSendChannels = new Set([
     'refresh-applications-db',
     'run-integrity-advanced-check',
     'run-integrity-check',
+    'run-security-action',
+    'set-asr-rules',
     'start-script',
     'uninstall-app',
     'update-all-apps',
@@ -26,7 +31,11 @@ const allowedSendChannels = new Set([
 const allowedReceiveChannels = new Set([
     'integrity-advanced-result',
     'integrity-result',
+    'security-action-result',
     'applications-db-refresh-result',
+    'asr-history-result',
+    'asr-state-result',
+    'asr-rules-result',
     'install-complete',
     'install-progress',
     'load-apps',

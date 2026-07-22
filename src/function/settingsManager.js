@@ -13,6 +13,20 @@ const defaultSettings = {
     applicationsDbSources: ['https://github.com/NoixDel/ArtemisStore/blob/main/applications.db'],
 };
 
+const settingValidators = {
+    autoUpdate: (value) => Boolean(value),
+    AllwaysShowTerminal: (value) => Boolean(value),
+    updateAppsOnLogin: (value) => Boolean(value),
+    applicationsDbSources: (value) => {
+        if (Array.isArray(value)) return value.map(String).slice(0, 10);
+        return String(value || '')
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 10);
+    },
+};
+
 function getSettingsPath() {
     if (!settingsPath) {
         settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -48,8 +62,12 @@ function readSettings() {
 }
 
 function updateSetting(key, value) {
+    if (!Object.prototype.hasOwnProperty.call(settingValidators, key)) {
+        throw new Error(`Parametre inconnu : ${key}`);
+    }
+
     const settings = readSettings();
-    settings[key] = value;
+    settings[key] = settingValidators[key](value);
     writeSettings(settings);
     return settings;
 }

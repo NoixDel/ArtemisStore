@@ -5,9 +5,12 @@ const https = require('https');
 const crypto = require('crypto');
 const logger = require('../bin/logger');
 const { readSettings } = require('./settingsManager');
+const { normalizeHttpsUrl } = require('../bin/security');
 
 const DB_FILE_NAME = 'applications.db';
 const DB_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const DB_MAX_BYTES = 50 * 1024 * 1024;
+const ALLOWED_DB_HOSTS = ['raw.githubusercontent.com', 'github.com'];
 const DEFAULT_DB_URL =
     'https://raw.githubusercontent.com/NoixDel/ArtemisStore/main/applications.db';
 
@@ -23,7 +26,7 @@ function normalizeDbUrl(url) {
         return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
     }
 
-    return trimmed;
+    return normalizeHttpsUrl(trimmed, ALLOWED_DB_HOSTS);
 }
 
 function normalizeDbSources(sources) {
@@ -75,10 +78,20 @@ function isCacheFresh(filePath) {
 
 function downloadToBuffer(url) {
     return new Promise((resolve, reject) => {
-        const request = https.get(url, (response) => {
+        let safeUrl;
+        try {
+            safeUrl = normalizeHttpsUrl(url, ALLOWED_DB_HOSTS);
+        } catch (err) {
+            reject(err);
+            return;
+        }
+
+        const request = https.get(safeUrl, (response) => {
             if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
                 response.resume();
-                downloadToBuffer(response.headers.location).then(resolve).catch(reject);
+                downloadToBuffer(new URL(response.headers.location, safeUrl).toString())
+                    .then(resolve)
+                    .catch(reject);
                 return;
             }
 
@@ -89,7 +102,15 @@ function downloadToBuffer(url) {
             }
 
             const chunks = [];
-            response.on('data', (chunk) => chunks.push(chunk));
+            let totalBytes = 0;
+            response.on('data', (chunk) => {
+                totalBytes += chunk.length;
+                if (totalBytes > DB_MAX_BYTES) {
+                    request.destroy(new Error('applications.db trop volumineux.'));
+                    return;
+                }
+                chunks.push(chunk);
+            });
             response.on('end', () => resolve(Buffer.concat(chunks)));
         });
 
@@ -98,6 +119,16 @@ function downloadToBuffer(url) {
         });
         request.on('error', reject);
     });
+}
+
+function assertValidSqliteDatabase(buffer) {
+    const sqliteHeader = Buffer.from('SQLite format 3\0', 'utf8');
+    if (
+        buffer.length < sqliteHeader.length ||
+        !buffer.subarray(0, sqliteHeader.length).equals(sqliteHeader)
+    ) {
+        throw new Error('applications.db invalide: signature SQLite absente.');
+    }
 }
 
 async function downloadFirstAvailable(sources) {
@@ -110,6 +141,7 @@ async function downloadFirstAvailable(sources) {
             if (buffer.length < 1024) {
                 throw new Error('Fichier applications.db trop petit.');
             }
+            assertValidSqliteDatabase(buffer);
             return { source, buffer };
         } catch (err) {
             lastError = err;
