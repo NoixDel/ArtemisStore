@@ -16,6 +16,7 @@ L’objectif : **rendre accessible** ce qui est souvent réservé aux utilisateu
 - ✅ **Activation facile de Office**
 - ✅ **Suppression des bloatwares Windows**
 - ✅ **Suppression des tâches de télémétrie Windows**
+- ⏳ **Info en temps réel sur l'état de vie du poste**
 
 > Les fonctionnalités marquées ⏳ sont actuellement en développement.
 
@@ -36,6 +37,10 @@ Aucune ligne de commande, aucune configuration manuelle.
 ![Page Windows et Office ArtemisStore](https://github.com/NoixDel/ArtemisStore/blob/main/screenshot/winoffice_page.png?raw=true)
 ### Mise à jour
 ![Page des mise à jour ArtemisStore](https://github.com/NoixDel/ArtemisStore/blob/main/screenshot/update_page.png?raw=true)
+### Optimisations
+![Page des optimisations ArtemisStore](https://github.com/NoixDel/ArtemisStore/blob/main/screenshot/optimisation_page.png?raw=true)
+### Sécurisation du poste
+![Page de sécurisation du poste ArtemisStore](https://github.com/NoixDel/ArtemisStore/blob/main/screenshot/securite_page.png?raw=true)
 
 ---
 

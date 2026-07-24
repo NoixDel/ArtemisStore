@@ -40,6 +40,57 @@
         margin-top: 12px;
     }
 
+    .winget-health {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f8fafc;
+    }
+
+    .winget-dot {
+        width: 12px;
+        height: 12px;
+        flex: 0 0 12px;
+        border-radius: 50%;
+        background: #94a3b8;
+        box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.14);
+    }
+
+    .winget-health[data-state="ready"] .winget-dot {
+        background: #16a34a;
+        box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.14);
+    }
+
+    .winget-health[data-state="warning"] .winget-dot {
+        background: #d97706;
+        box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.14);
+    }
+
+    .winget-health[data-state="error"] .winget-dot {
+        background: #dc2626;
+        box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.14);
+    }
+
+    .winget-health strong,
+    .winget-health span {
+        display: block;
+    }
+
+    .winget-health span {
+        margin-top: 2px;
+        color: #64748b;
+        font-size: 0.86rem;
+    }
+
+    #wingetMessage {
+        min-height: 22px;
+        margin: 10px 0 0;
+        font-size: 0.86rem;
+    }
+
     #applicationsDbSources {
         min-height: 110px;
         font-family: Consolas, "Courier New", monospace;
@@ -80,6 +131,25 @@
         </select>
     </section>
 
+    <section class="setting-card">
+        <label>Winget</label>
+        <p>Verifie et entretient le composant Windows utilise pour installer les applications.</p>
+        <div id="wingetHealth" class="winget-health" data-state="checking">
+            <span class="winget-dot" aria-hidden="true"></span>
+            <div>
+                <strong id="wingetState">Verification en cours...</strong>
+                <span id="wingetDetails">Recherche de Winget et de ses sources</span>
+            </div>
+        </div>
+        <div class="setting-actions">
+            <button id="checkWingetBtn" class="btn btn-outline-secondary btn-sm" data-winget-action="check">Verifier</button>
+            <button id="repairWingetBtn" class="btn btn-primary btn-sm" data-winget-action="install-repair">Installer / reparer</button>
+            <button id="updateWingetBtn" class="btn btn-outline-primary btn-sm" data-winget-action="update-client">Mettre a jour Winget</button>
+            <button id="updateWingetSourcesBtn" class="btn btn-outline-primary btn-sm" data-winget-action="update-sources">Actualiser les sources</button>
+        </div>
+        <p id="wingetMessage" class="text-muted" aria-live="polite"></p>
+    </section>
+
     <section class="setting-card wide">
         <label for="applicationsDbSources">Sources applications.db</label>
         <p>Une URL par ligne. Les liens GitHub classiques sont convertis automatiquement en liens raw.</p>
@@ -97,6 +167,10 @@
 <script>
     const booleanFields = ['autoUpdate', 'AllwaysShowTerminal', 'updateAppsOnLogin'];
     const dbSourcesField = document.getElementById('applicationsDbSources');
+    const wingetButtons = Array.from(document.querySelectorAll('[data-winget-action]'));
+    const wingetButtonLabels = new Map(
+        wingetButtons.map((button) => [button.dataset.wingetAction, button.textContent])
+    );
 
     function applySettings(settings) {
         booleanFields.forEach((field) => {
@@ -141,6 +215,50 @@
             : 'Base applications deja a jour';
     });
 
+    function setWingetBusy(action = null) {
+        wingetButtons.forEach((button) => {
+            button.disabled = Boolean(action);
+            button.textContent =
+                action && button.dataset.wingetAction === action
+                    ? 'Operation en cours...'
+                    : wingetButtonLabels.get(button.dataset.wingetAction);
+        });
+    }
+
+    function renderWingetStatus(status, message, success, action) {
+        const health = document.getElementById('wingetHealth');
+        const state = document.getElementById('wingetState');
+        const details = document.getElementById('wingetDetails');
+        const messageElement = document.getElementById('wingetMessage');
+
+        if (!status) {
+            health.dataset.state = 'error';
+            state.textContent = 'Verification impossible';
+            details.textContent = 'Winget n a pas pu etre controle';
+        } else if (status.working) {
+            health.dataset.state = 'ready';
+            state.textContent = 'Winget operationnel';
+            details.textContent = `${status.version ? `Version ${status.version} - ` : ''}sources accessibles`;
+        } else if (status.installed) {
+            health.dataset.state = 'warning';
+            state.textContent = 'Winget a reparer';
+            details.textContent = 'Le composant est present mais ne fonctionne pas completement';
+        } else {
+            health.dataset.state = 'warning';
+            state.textContent = 'Winget non disponible';
+            details.textContent = 'Une installation ou une reparation est necessaire';
+        }
+
+        messageElement.className =
+            action === 'check' || success ? 'text-muted' : 'text-danger';
+        messageElement.textContent = message || '';
+    }
+
+    window.electron.on('winget-manager-result', ({ action, success, status, message }) => {
+        setWingetBusy();
+        renderWingetStatus(status, message, success, action);
+    });
+
     booleanFields.forEach((field) => {
         document.getElementById(field).addEventListener('change', (event) => {
             window.electron.send('update-setting', field, event.target.value === 'true');
@@ -163,6 +281,19 @@
         dbStatus.textContent = 'Actualisation en cours...';
         window.electron.send('refresh-applications-db');
     });
+
+    wingetButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const action = button.dataset.wingetAction;
+            setWingetBusy(action);
+            document.getElementById('wingetMessage').className = 'text-muted';
+            document.getElementById('wingetMessage').textContent =
+                action === 'check' ? 'Verification en cours...' : 'Cette operation peut prendre quelques minutes...';
+            window.electron.send('winget-manager-action', action);
+        });
+    });
+
+    window.electron.send('winget-manager-action', 'check');
 </script>
 
 <%- include('partials/footers') %>

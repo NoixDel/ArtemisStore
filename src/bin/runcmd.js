@@ -1,21 +1,30 @@
 const { exec } = require('child_process');
 const logger = require('./logger');
 const { readSettings } = require('../function/settingsManager');
-
-function psSingleQuote(value) {
-    return `'${String(value).replace(/'/g, "''")}'`;
-}
+const { brandPowerShellCommand, encodePowerShellCommand } = require('./terminalBranding');
 
 function buildVisiblePowerShellCommand(command) {
-    const encodedCommand = psSingleQuote(command);
-    return [
-        'powershell -NoProfile -ExecutionPolicy Bypass -Command',
-        '"$p = Start-Process powershell.exe',
-        `-ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-Command',${encodedCommand})`,
+    const encodedCommand = encodePowerShellCommand(brandPowerShellCommand(command));
+    const launcher = [
+        '$p = Start-Process powershell.exe',
+        `-ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','${encodedCommand}')`,
         '-WindowStyle Normal',
         '-Wait',
         '-PassThru;',
-        'exit $p.ExitCode"',
+        'exit $p.ExitCode',
+    ].join(' ');
+    return [
+        'powershell -NoLogo -NoProfile -ExecutionPolicy Bypass',
+        '-WindowStyle Hidden',
+        `-EncodedCommand ${encodePowerShellCommand(launcher)}`,
+    ].join(' ');
+}
+
+function buildDirectBrandedPowerShellCommand(command) {
+    const encodedCommand = encodePowerShellCommand(brandPowerShellCommand(command));
+    return [
+        'powershell -NoLogo -NoProfile -ExecutionPolicy Bypass',
+        `-EncodedCommand ${encodedCommand}`,
     ].join(' ');
 }
 
@@ -36,20 +45,37 @@ function runCommand(
         let finalCommand = command;
 
         if (uac) {
-            const escaped = command.replace(/"/g, '""');
             const windowStyle = showTerminal ? 'Normal' : 'Hidden';
-            const psCommand = `Start-Process powershell -Verb RunAs -WindowStyle ${windowStyle} -ArgumentList '-NoProfile','-Command','${escaped}'`;
-            finalCommand = `powershell -NoProfile -WindowStyle ${windowStyle} -Command "${psCommand}"`;
+            const commandToRun = showTerminal ? brandPowerShellCommand(command) : command;
+            const encodedCommand = encodePowerShellCommand(commandToRun);
+            const psCommand = [
+                '$p = Start-Process powershell.exe',
+                '-Verb RunAs',
+                `-WindowStyle ${windowStyle}`,
+                `-ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand','${encodedCommand}')`,
+                '-Wait',
+                '-PassThru;',
+                'exit $p.ExitCode',
+            ].join(' ');
+            const encodedLauncher = encodePowerShellCommand(psCommand);
+            finalCommand = [
+                'powershell -NoLogo -NoProfile -ExecutionPolicy Bypass',
+                '-WindowStyle Hidden',
+                `-EncodedCommand ${encodedLauncher}`,
+            ].join(' ');
             logger.info('[UAC] Execution elevee de la commande.');
-        } else if (showTerminal && !captureOutput) {
-            finalCommand = buildVisiblePowerShellCommand(command);
+        } else if (showTerminal) {
+            finalCommand = captureOutput
+                ? buildDirectBrandedPowerShellCommand(command)
+                : buildVisiblePowerShellCommand(command);
         }
 
         logger.info(`Commande executee : ${finalCommand}`);
 
+        const launchesSeparateTerminal = showTerminal && (uac || !captureOutput);
         const proc = exec(finalCommand, {
             encoding: 'utf8',
-            windowsHide: !showTerminal,
+            windowsHide: launchesSeparateTerminal || !showTerminal,
             maxBuffer: 20 * 1024 * 1024,
         });
 

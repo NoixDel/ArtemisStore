@@ -1,6 +1,6 @@
 {
     "name": "artemisstore",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "description": "AppStore for PC",
     "main": "src/main.js",
     "scripts": {
@@ -9,6 +9,10 @@
         "build": "electron-builder --publish never --dir --windows",
         "createexe": "electron-builder --publish never",
         "sign-and-publish": "electron-builder --publish always",
+        "test:security": "node devtools/validate_integrity_security.js",
+        "test:winget": "node devtools/validate_winget_manager.js",
+        "test:system-info": "node devtools/validate_system_info.js",
+        "test:terminal": "node devtools/validate_terminal_branding.js",
         "format": "prettier --write \"**/*.js\" && eslint --fix .",
         "dev:app_editor": "node devtools/application_management/index.js"
     },

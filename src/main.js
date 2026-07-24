@@ -1,9 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const dns = require('dns');
-const { execFile } = require('child_process');
 
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
 
@@ -37,6 +35,8 @@ const setupActivateOfficeListener = require('./function/ActivateOffice');
 const { STARTUP_ARG } = require('./function/startupTask');
 const { setupIntegrityCheckListener } = require('./function/IntegrityCheck');
 const { setupWinOptimisationsListener } = require('./function/WinOptimisations');
+const { setupWingetManagerListeners } = require('./function/WingetManager');
+const { ensureLogFile, openLogViewer } = require('./function/LogViewer');
 const { refreshApplicationDatabase } = require('./function/ApplicationDatabaseManager');
 const { isSafePageName } = require('./bin/security');
 
@@ -165,24 +165,31 @@ function setupMainIpcListeners() {
         }
     });
 
-    ipcMain.on('open-log-terminal', () => {
-        const user = os.userInfo().username;
-        const date = new Date();
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const logPath = `C:\\Users\\${user}\\AppData\\Roaming\\artemisstore\\logs\\app-${yyyy}-${mm}-${dd}.log`;
-        const title = `ArtemisStore LOG PAGE ${dd}/${mm}/${yyyy}. La page ne fonctionnera plus a partir de 00h00`;
-        const command = `$host.ui.RawUI.WindowTitle = '${title.replace(/'/g, "''")}'; Get-Content -LiteralPath '${logPath.replace(/'/g, "''")}' -Wait`;
-        logger.info(`[main.js]: ouverture terminal logs ${logPath}`);
-        execFile(
-            'powershell.exe',
-            ['-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', command],
-            { windowsHide: false },
-            (error) => {
-                if (error) logger.error(`[main.js] Echec ouverture logs : ${error.message}`);
+    ipcMain.on('open-log-terminal', async (event) => {
+        const userDataPath = app.getPath('userData');
+        try {
+            const { logPath } = await openLogViewer(userDataPath);
+            logger.info(`[main.js] Journal ouvert : ${logPath}`);
+            if (!event.sender.isDestroyed()) {
+                event.sender.send('log-viewer-result', { success: true });
             }
-        );
+        } catch (error) {
+            logger.error(`[main.js] Echec terminal des journaux : ${error.message}`);
+            let fallbackError = error.message;
+            try {
+                const logPath = ensureLogFile(userDataPath);
+                fallbackError = await shell.openPath(logPath);
+            } catch (fallbackFailure) {
+                fallbackError = fallbackFailure.message;
+            }
+            if (!event.sender.isDestroyed()) {
+                event.sender.send('log-viewer-result', {
+                    success: !fallbackError,
+                    fallback: !fallbackError,
+                    error: fallbackError || error.message,
+                });
+            }
+        }
     });
 
     ipcMain.on('open-external-url', (event, url) => {
@@ -276,6 +283,7 @@ app.whenReady().then(async () => {
     setupActivateOfficeListener();
     setupIntegrityCheckListener();
     setupWinOptimisationsListener();
+    setupWingetManagerListeners();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

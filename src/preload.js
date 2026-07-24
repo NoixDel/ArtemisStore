@@ -26,6 +26,7 @@ const allowedSendChannels = new Set([
     'uninstall-app',
     'update-all-apps',
     'update-setting',
+    'winget-manager-action',
 ]);
 
 const allowedReceiveChannels = new Set([
@@ -39,6 +40,7 @@ const allowedReceiveChannels = new Set([
     'install-complete',
     'install-progress',
     'load-apps',
+    'log-viewer-result',
     'office-activation-result',
     'office-activation-status',
     'office-download-complete',
@@ -50,6 +52,7 @@ const allowedReceiveChannels = new Set([
     'win-office-info',
     'win-optimizations-data',
     'win-optimizations-result',
+    'winget-manager-result',
 ]);
 
 contextBridge.exposeInMainWorld('electron', {
@@ -92,6 +95,25 @@ window.addEventListener('DOMContentLoaded', () => {
     if (openLogBtn) {
         openLogBtn.addEventListener('click', (event) => {
             event.preventDefault();
+            const label = openLogBtn.querySelector('span:last-child');
+            if (label) label.textContent = 'Ouverture...';
+            openLogBtn.style.pointerEvents = 'none';
+            const resetLogButton = (text) => {
+                if (label) {
+                    label.textContent = text;
+                    setTimeout(() => {
+                        label.textContent = 'Logs';
+                    }, 1800);
+                }
+                openLogBtn.style.pointerEvents = '';
+            };
+            const responseTimeout = setTimeout(() => {
+                resetLogButton('Erreur logs');
+            }, 10000);
+            ipcRenderer.once('log-viewer-result', (_ipcEvent, result) => {
+                clearTimeout(responseTimeout);
+                resetLogButton(result.success ? 'Logs ouverts' : 'Erreur logs');
+            });
             ipcRenderer.send('open-log-terminal');
         });
     }

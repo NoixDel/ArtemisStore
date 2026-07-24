@@ -181,6 +181,72 @@
     color: #6f42c1;
   }
 
+  .security-notice {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid #b6d4fe;
+    border-radius: 8px;
+    background: #e7f1ff;
+    color: #084298;
+    font-size: 13px;
+  }
+
+  .security-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+
+  .security-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #e9ecef;
+    color: #495057;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .security-badge.read-only {
+    background: #e2d9f3;
+    color: #432874;
+  }
+
+  .security-impact {
+    min-height: 78px;
+    margin: 0 0 12px;
+    padding-left: 18px;
+    color: #495057;
+    font-size: 13px;
+  }
+
+  .security-impact li {
+    margin-bottom: 4px;
+  }
+
+  .security-card .safety-note {
+    min-height: 0;
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border-left: 3px solid #198754;
+    background: #f1f8f4;
+    color: #355b45;
+    font-size: 12px;
+  }
+
+  .security-button-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .security-card .secondary-action {
+    border-color: #6c757d;
+    color: #495057;
+  }
+
   .advanced-output,
   .security-output {
     display: none;
@@ -318,28 +384,32 @@
 
   <div id="securityPanel" class="security-panel">
     <h2>Securite du poste</h2>
-    <p>Actions progressives pour renforcer Windows sans passer brutalement en mode blocage. Les changements sensibles commencent en audit ou diagnostic.</p>
+    <p>Des protections adaptees a un PC personnel, avec des choix simples et une verification apres chaque changement.</p>
+    <div class="security-notice">
+      Le mode recommande active les protections essentielles sans couper les logiciels, les jeux, les partages ou les peripheriques deja utilises.
+    </div>
     <div id="securityGrid" class="security-grid"></div>
     <div class="asr-manager">
       <div class="asr-toolbar">
-        <h3>Regles ASR Microsoft Defender</h3>
+        <h3>Protections anti-attaque Defender</h3>
         <div class="asr-actions">
-          <button id="asrDefaultButton">Default</button>
+          <button id="asrDefaultButton">Reglages recommandes</button>
           <button id="asrRefreshButton">Actualiser</button>
           <button id="asrApplyButton">Appliquer avec UAC</button>
         </div>
       </div>
-      <div id="asrStatus" class="check-summary">Chargement des regles ASR...</div>
+      <div id="asrStatus" class="check-summary">Lecture des protections actuelles sans modifier le PC...</div>
+      <pre id="asrResultOutput" class="security-output"></pre>
       <div id="asrRulesContainer"></div>
       <div class="asr-history">
         <div class="asr-toolbar">
-          <h3>Historique ASR</h3>
+          <h3>Activite des protections</h3>
           <div class="asr-actions">
             <button id="asrHistoryButton">Actualiser l'historique</button>
           </div>
         </div>
         <div id="asrHistoryList" class="asr-history-list">
-          <div class="empty-state">Les detections audit/block apparaitront ici pendant que Defender les journalise.</div>
+          <div class="empty-state">Les comportements suspects detectes ou bloques apparaitront ici.</div>
         </div>
       </div>
     </div>
@@ -360,6 +430,7 @@
   const asrApplyButton = document.getElementById('asrApplyButton');
   const asrHistoryButton = document.getElementById('asrHistoryButton');
   const asrHistoryList = document.getElementById('asrHistoryList');
+  const asrResultOutput = document.getElementById('asrResultOutput');
   let asrRules = [];
   let asrDefaults = {};
 
@@ -436,21 +507,60 @@
   const securityActions = [
     {
       id: 'microsoft-baseline-safe',
-      title: 'Baseline Microsoft officielle',
-      description: 'Active pare-feu, protections Defender de base, cloud protection, samples sûrs et PUA.',
+      title: 'Protection Windows recommandee',
+      description: 'Active les protections essentielles d un PC personnel puis verifie leur fonctionnement.',
       tone: 'safe',
+      kind: 'apply',
+      badge: 'Modifie Windows',
+      buttonLabel: 'Appliquer avec UAC',
+      runningLabel: 'Application...',
+      effects: [
+        'Pare-feu actif, entrant bloque et sortant autorise',
+        'UAC standard et bureau securise',
+        'SmartScreen, protection cloud, PUA et analyses Defender',
+        'Wi-Fi non modifiable avant connexion et notifications masquees',
+        'SMB1, Telnet, TFTP et PowerShell 2 desactives s ils sont presents',
+        'Adresse Wi-Fi privee sur les reseaux marques Public',
+      ],
+      safety: 'Conserve IPv6, SMB2/3, imprimantes, decouverte locale, Bureau a distance, regles pare-feu et exclusions. Le Wi-Fi de la maison reste inchange et l accessibilite reste disponible.',
+      confirmation: 'Appliquer la protection Windows recommandee ? Les anciens appareils qui exigent SMB1 peuvent necessiter la restauration de compatibilite.',
+      secondaryId: 'recommended-protection-restore',
+      secondaryLabel: 'Restaurer compatibilite',
+      secondaryRunningLabel: 'Restauration...',
+      secondaryConfirmation: 'Reafficher le Wi-Fi et les notifications avant connexion, et reactiver uniquement les anciens composants qu ArtemisStore a desactives ?',
     },
     {
       id: 'defender-hardened',
-      title: 'Protections Defender renforcees',
-      description: 'Renforce Defender avec cloud high, signatures, Network Protection et Controlled Folder Access en audit.',
+      title: 'Protection Defender renforcee',
+      description: 'Ameliore la detection sans activer de blocage applicatif agressif.',
       tone: 'safe',
+      kind: 'apply',
+      badge: 'Modifie Defender',
+      buttonLabel: 'Renforcer avec UAC',
+      runningLabel: 'Configuration...',
+      effects: [
+        'Protection cloud High avec delai limite a 20 secondes',
+        'Supports amovibles, archives et signatures avant scan',
+        'Protection reseau et anti-ransomware en surveillance',
+      ],
+      safety: 'Les exclusions sont preservees. La surveillance repere les menaces sans empecher les logiciels habituels de fonctionner.',
+      confirmation: 'Renforcer Microsoft Defender sans activer de blocage agressif ?',
     },
     {
       id: 'hardware-security-check',
-      title: 'Chiffrement + materiel',
-      description: 'Controle TPM, Secure Boot, BitLocker et VBS sans activer de chiffrement automatiquement.',
+      title: 'Chiffrement et materiel',
+      description: 'Verification fiable des protections liees au materiel et au disque systeme.',
       tone: 'audit',
+      kind: 'audit',
+      badge: 'Verification seule',
+      buttonLabel: 'Verifier avec UAC',
+      runningLabel: 'Verification...',
+      effects: [
+        'TPM, Secure Boot et capacites DMA',
+        'BitLocker, methode, progression et types de protecteurs',
+        'VBS, Credential Guard et integrite de la memoire',
+      ],
+      safety: 'N active jamais BitLocker, VBS, le firmware ou l integrite memoire automatiquement et n affiche aucune cle de recuperation.',
     },
   ];
 
@@ -490,22 +600,29 @@
   window.electron.on('security-action-result', (result) => {
     const button = document.querySelector(`[data-run-security="${result.id}"]`);
     const output = document.getElementById(`security-output-${result.id}`);
+    const action = securityActions.find((item) => item.id === result.id || item.secondaryId === result.id);
+    const isSecondary = action && action.secondaryId === result.id;
     if (button) {
       button.disabled = false;
-      button.textContent = result.admin ? 'Appliquer avec UAC' : 'Appliquer';
+      button.textContent = action
+        ? (isSecondary ? action.secondaryLabel : action.buttonLabel)
+        : (result.admin ? 'Appliquer avec UAC' : 'Appliquer');
     }
 
     if (output) {
       const seconds = Math.round((result.durationMs || 0) / 1000);
       output.style.display = 'block';
-      output.textContent = `[${labels[result.status] || result.status}] ${result.title}\nCode sortie: ${result.exitCode}\nDuree: ${seconds}s\n\n${result.output || ''}`;
+      const nextStep = action && action.kind === 'apply'
+        ? '\n\nRelance le diagnostic principal pour actualiser la vue globale.'
+        : '';
+      output.textContent = `[${labels[result.status] || result.status}] ${result.title}\nCode sortie: ${result.exitCode}\nDuree: ${seconds}s\n\n${result.output || ''}${nextStep}`;
     }
   });
 
   window.electron.on('asr-state-result', (payload) => {
     asrRules = payload.rules || [];
     asrDefaults = payload.defaults || {};
-    asrStatus.textContent = payload.success ? 'Etat ASR actuel charge.' : `Lecture ASR impossible: ${payload.error}`;
+    asrStatus.textContent = payload.success ? 'Protections Defender actuelles chargees.' : `Lecture impossible: ${payload.error}`;
     renderAsrRules();
   });
 
@@ -513,11 +630,16 @@
     asrApplyButton.disabled = false;
     asrApplyButton.textContent = 'Appliquer avec UAC';
     if (!payload.success) {
-      asrStatus.textContent = `Application ASR impossible: ${payload.error}`;
+      asrStatus.textContent = `Application impossible: ${payload.error}`;
+      asrResultOutput.style.display = 'block';
+      asrResultOutput.textContent = payload.error || 'Erreur inconnue.';
       return;
     }
 
-    asrStatus.textContent = 'Regles ASR appliquees. Les detections audit/block sont surveillees via les evenements Defender.';
+    const resultLabel = labels[payload.result.status] || payload.result.status;
+    asrStatus.textContent = `${resultLabel}: protections relues apres application. Les reglages deja presents ont ete conserves.`;
+    asrResultOutput.style.display = 'block';
+    asrResultOutput.textContent = payload.result.output || 'Application terminee sans sortie.';
     asrRules = payload.result.rules || asrRules;
     renderAsrRules();
     window.electron.send('get-asr-history');
@@ -597,21 +719,41 @@
   function renderSecurityActions() {
     securityGrid.innerHTML = securityActions.map((action) => `
       <div class="security-card ${action.tone}">
+        <div class="security-meta">
+          <span class="security-badge${action.kind === 'audit' ? ' read-only' : ''}">${escapeHtml(action.badge)}</span>
+          <span class="security-badge">UAC requis</span>
+        </div>
         <h3>${escapeHtml(action.title)}</h3>
-        <p>${escapeHtml(action.description)} UAC requis.</p>
-        <button data-run-security="${action.id}">Appliquer avec UAC</button>
+        <p>${escapeHtml(action.description)}</p>
+        <ul class="security-impact">
+          ${action.effects.map((effect) => `<li>${escapeHtml(effect)}</li>`).join('')}
+        </ul>
+        <p class="safety-note">${escapeHtml(action.safety)}</p>
+        <div class="security-button-row">
+          <button data-run-security="${action.id}">${escapeHtml(action.buttonLabel)}</button>
+          ${action.secondaryId ? `<button class="secondary-action" data-run-security="${action.secondaryId}">${escapeHtml(action.secondaryLabel)}</button>` : ''}
+        </div>
         <pre id="security-output-${action.id}" class="security-output"></pre>
+        ${action.secondaryId ? `<pre id="security-output-${action.secondaryId}" class="security-output"></pre>` : ''}
       </div>
     `).join('');
 
     document.querySelectorAll('[data-run-security]').forEach((button) => {
       button.addEventListener('click', () => {
         const id = button.getAttribute('data-run-security');
+        const action = securityActions.find((item) => item.id === id || item.secondaryId === id);
+        const isSecondary = action && action.secondaryId === id;
+        const confirmation = isSecondary ? action.secondaryConfirmation : action && action.confirmation;
+        if (confirmation && !window.confirm(confirmation)) {
+          return;
+        }
         const output = document.getElementById(`security-output-${id}`);
         button.disabled = true;
-        button.textContent = 'Application...';
+        button.textContent = action
+          ? (isSecondary ? action.secondaryRunningLabel : action.runningLabel)
+          : 'Execution...';
         output.style.display = 'block';
-        output.textContent = 'Application en cours. Accepte l UAC si Windows le demande...';
+        output.textContent = `${action && action.kind === 'audit' ? 'Verification' : 'Application'} en cours. Accepte l UAC si Windows le demande...`;
         window.electron.send('run-security-action', id);
       });
     });
@@ -619,7 +761,7 @@
 
   function renderAsrRules() {
     if (!asrRules.length) {
-      asrRulesContainer.innerHTML = '<div class="empty-state">Aucune regle ASR chargee.</div>';
+      asrRulesContainer.innerHTML = '<div class="empty-state">Aucune protection avancee chargee.</div>';
       return;
     }
 
@@ -627,7 +769,7 @@
       <table class="asr-table">
         <thead>
           <tr>
-            <th>Regle</th>
+            <th>Protection</th>
             <th>Categorie</th>
             <th>Mode</th>
           </tr>
@@ -636,15 +778,15 @@
           ${asrRules.map((rule) => `
             <tr>
               <td>
-                <strong>${escapeHtml(rule.title)}</strong><br>
-                <small>${escapeHtml(rule.id)}</small>
+                <strong>${escapeHtml(rule.title)}</strong>
               </td>
               <td>${escapeHtml(rule.category || '')}</td>
               <td>
                 <select data-asr-mode="${rule.id}">
-                  <option value="none"${rule.mode === 'none' ? ' selected' : ''}>None</option>
-                  <option value="audit"${rule.mode === 'audit' ? ' selected' : ''}>Audit</option>
-                  <option value="on"${rule.mode === 'on' ? ' selected' : ''}>On</option>
+                  <option value="none"${rule.mode === 'none' ? ' selected' : ''}>Desactive</option>
+                  <option value="audit"${rule.mode === 'audit' ? ' selected' : ''}>Surveiller</option>
+                  <option value="warn"${rule.mode === 'warn' ? ' selected' : ''}>Avertir</option>
+                  <option value="on"${rule.mode === 'on' ? ' selected' : ''}>Bloquer</option>
                 </select>
               </td>
             </tr>
@@ -664,12 +806,12 @@
 
   function renderAsrHistory(events, error) {
     if (error) {
-      asrHistoryList.innerHTML = `<div class="empty-state">Historique ASR indisponible: ${escapeHtml(error)}</div>`;
+      asrHistoryList.innerHTML = `<div class="empty-state">Historique des protections indisponible: ${escapeHtml(error)}</div>`;
       return;
     }
 
     if (!events.length) {
-      asrHistoryList.innerHTML = '<div class="empty-state">Aucune detection ASR recente dans le journal Defender.</div>';
+      asrHistoryList.innerHTML = '<div class="empty-state">Aucun comportement suspect recent dans le journal Defender.</div>';
       return;
     }
 
@@ -699,24 +841,31 @@
       ...rule,
       mode: asrDefaults[rule.id] || rule.defaultMode || 'audit',
     }));
-    asrStatus.textContent = 'Preset Default charge. Clique sur Appliquer avec UAC pour le poser sur Defender.';
+    asrStatus.textContent = 'Reglages recommandes charges: les pilotes dangereux sont bloques et les autres comportements suspects sont surveilles sans bloquer les logiciels.';
     renderAsrRules();
   });
 
   asrRefreshButton.addEventListener('click', () => {
-    asrStatus.textContent = 'Actualisation ASR...';
+    asrStatus.textContent = 'Actualisation des protections...';
     window.electron.send('get-asr-state');
   });
 
   asrApplyButton.addEventListener('click', () => {
+    const modes = collectAsrModes();
+    const blockingCount = Object.values(modes).filter((mode) => mode === 'on').length;
+    if (blockingCount > 0 && !window.confirm(`${blockingCount} protection(s) seront en mode Bloquer. Les reglages Defender deja presents seront conserves. Continuer ?`)) {
+      return;
+    }
     asrApplyButton.disabled = true;
     asrApplyButton.textContent = 'Application...';
-    asrStatus.textContent = 'Application des regles ASR en cours. Accepte l UAC si Windows le demande.';
-    window.electron.send('set-asr-rules', collectAsrModes());
+    asrStatus.textContent = 'Application des protections en cours. Accepte l UAC si Windows le demande.';
+    asrResultOutput.style.display = 'block';
+    asrResultOutput.textContent = 'Application et verification des protections en cours...';
+    window.electron.send('set-asr-rules', modes);
   });
 
   asrHistoryButton.addEventListener('click', () => {
-    asrHistoryList.innerHTML = '<div class="empty-state">Lecture de l historique ASR...</div>';
+    asrHistoryList.innerHTML = '<div class="empty-state">Lecture de l activite des protections...</div>';
     window.electron.send('get-asr-history');
   });
 </script>
